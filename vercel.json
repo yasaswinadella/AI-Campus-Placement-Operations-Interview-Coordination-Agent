@@ -1,4 +1,6 @@
 {
+  "name": "career-flow",
+  "framework": "vite",
   "rewrites": [
     {
       "source": "/(.*)",
