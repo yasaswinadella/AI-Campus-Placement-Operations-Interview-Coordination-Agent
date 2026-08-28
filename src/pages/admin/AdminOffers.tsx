@@ -12,13 +12,15 @@ import {
 } from 'lucide-react';
 
 export const AdminOffers: React.FC = () => {
-  const { applications, students, showToast } = useData();
+  const { applications = [], students = [], showToast } = useData();
 
   const [selectedCompany, setSelectedCompany] = useState('ALL');
 
-  const offers = applications.filter((a) => a.status === 'OFFERED');
+  const safeApps = applications || [];
+  const offers = safeApps.filter((a) => a && a.status === 'OFFERED');
 
   const filteredOffers = offers.filter((o) => {
+    if (!o) return false;
     if (selectedCompany === 'ALL') return true;
     return o.company === selectedCompany;
   });

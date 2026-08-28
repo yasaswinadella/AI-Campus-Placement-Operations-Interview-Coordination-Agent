@@ -13,10 +13,16 @@ import {
 } from 'lucide-react';
 
 export const AdminReports: React.FC = () => {
-  const { students, jobs, companies, placementDrives, applications, showToast } = useData();
+  const { students = [], jobs = [], companies = [], placementDrives = [], applications = [], showToast } = useData();
 
   const handleDownloadReport = (title: string) => {
-    const text = `CareerFlow Institutional Placement Report\nType: ${title}\nGenerated on: ${new Date().toISOString()}\nTotal Students: ${students.length}\nTotal Jobs: ${jobs.length}\nPlacement Drives: ${placementDrives.length}\nOffers Extended: ${applications.filter((a) => a.status === 'OFFERED').length}\n\nInstitutional Compliance: 100% Certified.`;
+    const safeStudents = students || [];
+    const safeJobs = jobs || [];
+    const safeDrives = placementDrives || [];
+    const safeApps = applications || [];
+    const offeredCount = safeApps.filter((a) => a && a.status === 'OFFERED').length;
+
+    const text = `CareerFlow Institutional Placement Report\nType: ${title}\nGenerated on: ${new Date().toISOString()}\nTotal Students: ${safeStudents.length}\nTotal Jobs: ${safeJobs.length}\nPlacement Drives: ${safeDrives.length}\nOffers Extended: ${offeredCount}\n\nInstitutional Compliance: 100% Certified.`;
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

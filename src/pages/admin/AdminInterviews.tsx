@@ -27,12 +27,17 @@ export const AdminInterviews: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
 
-  const filteredInterviews = interviews.filter((interview) => {
-    const matchesSearch =
-      interview.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      interview.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      interview.jobTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (interview.companyId && interview.companyId.toLowerCase().includes(searchQuery.toLowerCase()));
+  const safeInterviews = interviews || [];
+
+  const filteredInterviews = safeInterviews.filter((interview) => {
+    if (!interview) return false;
+    const sName = (interview.studentName || '').toLowerCase();
+    const sComp = (interview.company || '').toLowerCase();
+    const sJob = (interview.jobTitle || '').toLowerCase();
+    const sCId = (interview.companyId || '').toLowerCase();
+    const q = searchQuery.toLowerCase();
+
+    const matchesSearch = sName.includes(q) || sComp.includes(q) || sJob.includes(q) || sCId.includes(q);
 
     let matchesStatus = true;
     if (statusFilter !== 'ALL') {

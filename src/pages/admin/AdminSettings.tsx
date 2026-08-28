@@ -31,13 +31,13 @@ export const AdminSettings: React.FC = () => {
   const [institutionName, setInstitutionName] = useState('National Institute of Technology & Engineering');
 
   const totalDeleted =
-    recycleBinItems.companies.length +
-    recycleBinItems.students.length +
-    recycleBinItems.jobs.length +
-    recycleBinItems.applications.length +
-    recycleBinItems.interviews.length +
-    recycleBinItems.placementDrives.length +
-    recycleBinItems.assessments.length;
+    (recycleBinItems?.companies || []).length +
+    (recycleBinItems?.students || []).length +
+    (recycleBinItems?.jobs || []).length +
+    (recycleBinItems?.applications || []).length +
+    (recycleBinItems?.interviews || []).length +
+    (recycleBinItems?.placementDrives || []).length +
+    (recycleBinItems?.assessments || []).length;
 
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();

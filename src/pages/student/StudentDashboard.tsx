@@ -15,11 +15,15 @@ export const StudentDashboard: React.FC = () => {
   const { studentProfile, applications, interviews, aiJobSuggestions } = useData();
   const navigate = useNavigate();
 
-  const activeApplications = applications.filter((a) => a.studentId === studentProfile.id);
-  const upcomingInterviews = interviews.filter(
-    (i) => i.studentId === studentProfile.id && i.status === 'SCHEDULED'
+  const sId = studentProfile?.id || '';
+  const safeApps = applications || [];
+  const safeInterviews = interviews || [];
+
+  const activeApplications = safeApps.filter((a) => a && (a.studentId === sId || !sId));
+  const upcomingInterviews = safeInterviews.filter(
+    (i) => i && (i.studentId === sId || !sId) && i.status === 'SCHEDULED'
   );
-  const shortlistedCount = activeApplications.filter((a) => a.status === 'SHORTLISTED' || a.status === 'SELECTED' || a.status === 'OFFERED').length;
+  const shortlistedCount = activeApplications.filter((a) => a && (a.status === 'SHORTLISTED' || a.status === 'SELECTED' || a.status === 'OFFERED')).length;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">

@@ -84,8 +84,8 @@ export const AdminAssessments: React.FC = () => {
     setIsSendModalOpen(true);
   };
 
-  const pendingRequestsCount = studentAssessmentRequests.filter((r) => r.status === 'Pending').length;
-  const pendingRetestsCount = retestRequests.filter((r) => r.status === 'Pending').length;
+  const pendingRequestsCount = (studentAssessmentRequests || []).filter((r) => r && r.status === 'Pending').length;
+  const pendingRetestsCount = (retestRequests || []).filter((r) => r && r.status === 'Pending').length;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">

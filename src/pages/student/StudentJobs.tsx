@@ -103,7 +103,7 @@ export const StudentJobs: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {placementDrives.map((drive) => {
-                const isRegistered = drive.registeredStudentIds.includes(studentProfile.id);
+                const isRegistered = (drive.registeredStudentIds || []).includes(studentProfile.id);
                 const isEligible = studentProfile.cgpa >= drive.minCgpa;
 
                 return (

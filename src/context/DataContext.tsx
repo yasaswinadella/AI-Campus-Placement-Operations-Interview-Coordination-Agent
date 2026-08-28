@@ -814,13 +814,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setPlacementDrives((prev) =>
         prev.map((d) => {
           if (d.id === driveId) {
-            if (d.registeredStudentIds.includes(studentId)) {
+            const list = Array.isArray(d.registeredStudentIds) ? d.registeredStudentIds : [];
+            if (list.includes(studentId)) {
               return d;
             }
             success = true;
             const updated = {
               ...d,
-              registeredStudentIds: [...d.registeredStudentIds, studentId],
+              registeredStudentIds: [...list, studentId],
             };
             dbService.updatePlacementDrive(driveId, updated);
             return updated;

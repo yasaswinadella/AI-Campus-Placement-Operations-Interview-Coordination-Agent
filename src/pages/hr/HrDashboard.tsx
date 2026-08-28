@@ -28,9 +28,13 @@ export const HrDashboard: React.FC = () => {
   const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
 
-  const activeJobs = jobs.filter((j) => j.status === 'ACTIVE');
-  const shortlistedApps = applications.filter((a) => a.status === 'SHORTLISTED');
-  const scheduledInterviews = interviews.filter((i) => i.status === 'SCHEDULED');
+  const safeJobs = jobs || [];
+  const safeApps = applications || [];
+  const safeInterviews = interviews || [];
+
+  const activeJobs = safeJobs.filter((j) => j && j.status === 'ACTIVE');
+  const shortlistedApps = safeApps.filter((a) => a && a.status === 'SHORTLISTED');
+  const scheduledInterviews = safeInterviews.filter((i) => i && i.status === 'SCHEDULED');
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">

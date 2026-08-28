@@ -20,16 +20,21 @@ import {
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
-  const { students, jobs, placementDrives, companies, applications, showToast } = useData();
+  const { students = [], jobs = [], placementDrives = [], companies = [], applications = [], showToast } = useData();
   const navigate = useNavigate();
 
   const [isCreateDriveOpen, setIsCreateDriveOpen] = useState(false);
 
-  const offeredCount = applications.filter((a) => a.status === 'OFFERED').length;
-  const placementRate = Math.round((offeredCount / Math.max(1, students.length)) * 100);
+  const safeStudents = students || [];
+  const safeApps = applications || [];
+  const safeDrives = placementDrives || [];
+  const safeCompanies = companies || [];
+
+  const offeredCount = safeApps.filter((a) => a && a.status === 'OFFERED').length;
+  const placementRate = Math.round((offeredCount / Math.max(1, safeStudents.length)) * 100);
 
   const handleExportFullReport = () => {
-    const reportContent = `CareerFlow Campus Placement Official Report 2026\nGenerated: ${new Date().toISOString()}\nTotal Registered Students: ${students.length}\nCorporate Partners: ${companies.length}\nActive Drives: ${placementDrives.length}\nTotal Offers: ${offeredCount}\nBatch Placement Rate: ${placementRate}%\nAverage Package: 16.4 LPA\nHighest Package: 48.0 LPA`;
+    const reportContent = `CareerFlow Campus Placement Official Report 2026\nGenerated: ${new Date().toISOString()}\nTotal Registered Students: ${safeStudents.length}\nCorporate Partners: ${safeCompanies.length}\nActive Drives: ${safeDrives.length}\nTotal Offers: ${offeredCount}\nBatch Placement Rate: ${placementRate}%\nAverage Package: 16.4 LPA\nHighest Package: 48.0 LPA`;
     const blob = new Blob([reportContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -172,7 +177,7 @@ export const AdminDashboard: React.FC = () => {
 
                   <div className="text-right shrink-0">
                     <span className="text-xs font-bold text-emerald-600 block">
-                      {drive.registeredStudentIds.length} Registered
+                      {(drive.registeredStudentIds || []).length} Registered
                     </span>
                     <span className="text-[10px] text-[#64748B]">Deadline: {drive.registrationDeadline}</span>
                   </div>

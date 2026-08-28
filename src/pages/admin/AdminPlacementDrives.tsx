@@ -17,17 +17,22 @@ import {
 } from 'lucide-react';
 
 export const AdminPlacementDrives: React.FC = () => {
-  const { placementDrives, companies, students, applications } = useData();
+  const { placementDrives = [], companies = [], students = [], applications = [] } = useData();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [selectedDrive, setSelectedDrive] = useState<PlacementDrive | null>(null);
 
-  const filteredDrives = placementDrives.filter((drive) => {
-    const matchesSearch =
-      drive.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      drive.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (drive.companyId && drive.companyId.toLowerCase().includes(searchQuery.toLowerCase()));
+  const safeDrives = placementDrives || [];
+
+  const filteredDrives = safeDrives.filter((drive) => {
+    if (!drive) return false;
+    const dRole = (drive.role || '').toLowerCase();
+    const dComp = (drive.company || '').toLowerCase();
+    const dCId = (drive.companyId || '').toLowerCase();
+    const q = searchQuery.toLowerCase();
+
+    const matchesSearch = dRole.includes(q) || dComp.includes(q) || dCId.includes(q);
     
     let matchesStatus = true;
     if (statusFilter !== 'ALL') {

@@ -19,13 +19,19 @@ export const AdminStudents: React.FC = () => {
   const [selectedBranch, setSelectedBranch] = useState('ALL');
   const [selectedPlacementStatus, setSelectedPlacementStatus] = useState('ALL');
 
-  const filteredStudents = students.filter((student) => {
-    const isPlaced = applications.some((a) => a.studentId === student.id && a.status === 'OFFERED');
-    const matchesSearch =
-      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.branch.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesBranch = selectedBranch === 'ALL' || student.branch.includes(selectedBranch);
+  const safeStudents = students || [];
+  const safeApps = applications || [];
+
+  const filteredStudents = safeStudents.filter((student) => {
+    if (!student) return false;
+    const isPlaced = safeApps.some((a) => a && a.studentId === student.id && a.status === 'OFFERED');
+    const sName = (student.name || '').toLowerCase();
+    const sEmail = (student.email || '').toLowerCase();
+    const sBranch = (student.branch || '').toLowerCase();
+    const q = searchQuery.toLowerCase();
+
+    const matchesSearch = sName.includes(q) || sEmail.includes(q) || sBranch.includes(q);
+    const matchesBranch = selectedBranch === 'ALL' || (student.branch || '').includes(selectedBranch);
     const matchesStatus =
       selectedPlacementStatus === 'ALL' ||
       (selectedPlacementStatus === 'PLACED' && isPlaced) ||
