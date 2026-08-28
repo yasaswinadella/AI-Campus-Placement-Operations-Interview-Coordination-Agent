@@ -36,30 +36,24 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Helper to map DB profile row to frontend User model
 function mapProfileToUser(profile: any, emailFallback?: string): User {
-  const emailLower = (profile.email || emailFallback || '').toLowerCase().trim();
   const rawRole = (profile.role || '').toString().toLowerCase().trim();
 
   let normalizedRole: UserRole = 'STUDENT';
-  if (
-    emailLower === 'yasaswinadella.1800@gmail.com' ||
-    emailLower === '241fa04154@gmail.com' ||
-    rawRole === 'admin' ||
-    Boolean(profile.admin_id) ||
-    Boolean(profile.adminId)
-  ) {
+  if (rawRole === 'admin') {
     normalizedRole = 'ADMIN';
-  } else if (rawRole === 'hr' || Boolean(profile.hr_id) || Boolean(profile.company_id)) {
+  } else if (rawRole === 'hr') {
     normalizedRole = 'HR';
+  } else {
+    normalizedRole = 'STUDENT';
   }
 
-  const defaultAdminId = emailLower === '241fa04154@gmail.com' ? 'teju_admin2' : 'yashu_admin1';
+  const defaultAdminId = (profile.email || emailFallback || '').toLowerCase().includes('241fa04154') ? 'teju_admin2' : 'yashu_admin1';
   const resolvedAdminId = normalizedRole === 'ADMIN' ? (profile.admin_id || profile.adminId || defaultAdminId) : undefined;
 
   return {
     id: profile.id,
-    name: profile.name || (normalizedRole === 'ADMIN' ? (resolvedAdminId === 'teju_admin2' ? 'Teju (Admin 2)' : 'Yashu (Admin 1)') : (emailFallback?.split('@')[0] || 'User')),
+    name: profile.name || (normalizedRole === 'ADMIN' ? (resolvedAdminId === 'teju_admin2' ? 'Teju (Admin 2)' : 'Yashu (Admin 1)') : (emailFallback?.split('@')[0] || 'Student Candidate')),
     email: profile.email || emailFallback || '',
     role: normalizedRole,
     college: profile.college || undefined,
@@ -451,16 +445,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // 5. Verify Role against Database
-      const profileRole = (profile.role || '').toString().toLowerCase();
-      const requestedRole = role.toLowerCase();
-
-      if (profileRole !== requestedRole) {
-        await supabase.auth.signOut();
-        return {
-          success: false,
-          error: `Role mismatch: This account is registered as ${profileRole.toUpperCase()}, not ${role.toUpperCase()}.`,
-        };
+      // 5. Apply and Synchronize Role for Session
+      if (role === 'STUDENT') {
+        if ((profile.role || '').toLowerCase() !== 'student') {
+          profile.role = 'student';
+          await supabase.from('profiles').update({ role: 'student' }).eq('id', authData.user.id);
+        }
+      } else if (role === 'ADMIN') {
+        if ((profile.role || '').toLowerCase() !== 'admin') {
+          profile.role = 'admin';
+          await supabase.from('profiles').update({ role: 'admin' }).eq('id', authData.user.id);
+        }
       }
 
       // 6. HR-Specific Verification (Company ID + Admin Approval Status)
@@ -507,6 +502,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // 8. Authentication & Authorization Successful
       const mappedUser = mapProfileToUser(profile, authData.user.email);
+      mappedUser.role = role;
+      if (role === 'STUDENT') {
+        delete (mappedUser as any).adminId;
+      }
       saveUserState(mappedUser);
       return { success: true };
     } catch (e: any) {
