@@ -240,32 +240,35 @@ export const StudentAssessment: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-[#4F46E5] border border-indigo-200 text-xs font-bold mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>AI Neural Evaluation & Benchmark Center</span>
+          </div>
           <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">
-            Skill Assessment Center
+            Self Skill Assessment Center
           </h1>
           <p className="text-xs text-[#64748B] mt-0.5">
-            Take skill assessments to qualify for high-package placement drives.
+            Take skill assessments evaluated by AI to elevate your verified overall score and placement readiness.
           </p>
         </div>
 
-        <button
-          onClick={() => navigate('/student/assignments')}
-          className="px-4 py-2 bg-[#4F46E5] hover:bg-indigo-700 text-xs font-semibold text-white rounded-xl shadow-xs transition-colors flex items-center gap-2"
-        >
-          <BookOpen className="w-4 h-4" />
-          <span>Assigned Tests ({studentAssignments.length})</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 border border-slate-800">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>Overall Readiness: {studentProfile?.careerReadiness || 88}%</span>
+          </div>
+        </div>
       </div>
 
       {/* Available Domains Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {[
-          { skill: 'Python', icon: BookOpen, desc: 'Object-oriented programming, data structures, and core library functions.', rating: studentProfile.skills['Python'] || 0 },
-          { skill: 'DSA', icon: Sparkles, desc: 'Algorithms, trees, graphs, sorting, searching, and dynamic programming.', rating: studentProfile.skills['DSA'] || 0 },
-          { skill: 'SQL', icon: FileCheck2, desc: 'Relational query design, indexing, joins, aggregate functions, and normalization.', rating: studentProfile.skills['SQL'] || 0 },
-          { skill: 'React', icon: Award, desc: 'Component lifecycles, state hooks, performance optimization, and DOM manipulation.', rating: studentProfile.skills['React'] || 0 },
-          { skill: 'Java', icon: ShieldCheck, desc: 'Enterprise JVM architecture, multithreading, collections, and design patterns.', rating: studentProfile.skills['Java'] || 0 },
-          { skill: 'DBMS', icon: RotateCcw, desc: 'ACID properties, database concurrency, transaction isolation, and storage engines.', rating: studentProfile.skills['DBMS'] || 0 },
+          { skill: 'Python', icon: BookOpen, desc: 'Object-oriented programming, data structures, and core library functions.', rating: studentProfile?.skills?.['Python'] || 0 },
+          { skill: 'DSA', icon: Sparkles, desc: 'Algorithms, trees, graphs, sorting, searching, and dynamic programming.', rating: studentProfile?.skills?.['DSA'] || 0 },
+          { skill: 'SQL', icon: FileCheck2, desc: 'Relational query design, indexing, joins, aggregate functions, and normalization.', rating: studentProfile?.skills?.['SQL'] || 0 },
+          { skill: 'React', icon: Award, desc: 'Component lifecycles, state hooks, performance optimization, and DOM manipulation.', rating: studentProfile?.skills?.['React'] || 0 },
+          { skill: 'Java', icon: ShieldCheck, desc: 'Enterprise JVM architecture, multithreading, collections, and design patterns.', rating: studentProfile?.skills?.['Java'] || 0 },
+          { skill: 'DBMS', icon: RotateCcw, desc: 'ACID properties, database concurrency, transaction isolation, and storage engines.', rating: studentProfile?.skills?.['DBMS'] || 0 },
         ].map((item) => (
           <div
             key={item.skill}
