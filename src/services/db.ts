@@ -1065,29 +1065,59 @@ export const dbService = {
   // STUDENTS / PROFILES
   // ---------------------------------------------------------------------------
   async getStudents(): Promise<StudentProfile[]> {
-    if (!isSupabaseConfigured || !supabase) return [];
+    const localStudents: StudentProfile[] = [];
+    try {
+      const stored = localStorage.getItem('cf_registered_students');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) localStudents.push(...parsed);
+      }
+    } catch {}
+
+    if (!isSupabaseConfigured || !supabase) return localStudents;
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
-        .or('role.ilike.student,role.is.null')
-        .order('created_at', { ascending: false });
+        .select('*');
+
       if (error) {
-        console.warn('Supabase getStudents error:', error.message);
-        return [];
+        console.warn('Supabase getStudents query warning:', error.message);
       }
-      const activeStudents = (data || [])
-        .filter((row) => row && !row.deleted && (!row.role || row.role.toLowerCase() === 'student'))
+
+      const rows = data || [];
+      const activeStudents = rows
+        .filter((row) => {
+          if (!row || row.deleted) return false;
+          const r = (row.role || '').toString().toLowerCase().trim();
+          return r !== 'admin' && r !== 'hr';
+        })
         .map(mapStudentProfileFromDb);
-      return activeStudents;
+
+      const studentMap = new Map<string, StudentProfile>();
+      localStudents.forEach((s) => {
+        if (s && s.id) studentMap.set(s.id, s);
+        if (s && s.email) studentMap.set(s.email.toLowerCase(), s);
+      });
+      activeStudents.forEach((s) => {
+        if (s && s.id) studentMap.set(s.id, s);
+        if (s && s.email) studentMap.set(s.email.toLowerCase(), s);
+      });
+
+      return Array.from(new Set(studentMap.values()));
     } catch (err) {
       console.warn('Supabase getStudents exception:', err);
-      return [];
+      return localStudents;
     }
   },
 
   async saveStudentProfile(profile: StudentProfile): Promise<{ success: boolean; error?: string }> {
-    if (!isSupabaseConfigured || !supabase) return { success: false, error: 'Supabase not configured' };
+    try {
+      const stored = JSON.parse(localStorage.getItem('cf_registered_students') || '[]');
+      const filtered = stored.filter((s: any) => s && s.id !== profile.id && (s.email || '').toLowerCase() !== (profile.email || '').toLowerCase());
+      localStorage.setItem('cf_registered_students', JSON.stringify([...filtered, profile]));
+    } catch {}
+
+    if (!isSupabaseConfigured || !supabase) return { success: true };
     try {
       const dbPayload = mapStudentProfileToDb(profile);
       const { error } = await supabase.from('profiles').upsert(dbPayload);

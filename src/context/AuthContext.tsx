@@ -658,7 +658,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Warning creating profile row:', profError.message);
       }
 
-      // 3. Set logged-in state if session active
+      // 3. Persist and cache student profile for immediate global directory availability
+      const newStudentProfile = {
+        id: userId,
+        name: data.name.trim(),
+        email: emailKey,
+        phone: '',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+        college: data.college.trim(),
+        branch: data.branch.trim(),
+        graduationYear: Number(data.graduationYear),
+        cgpa: Number(data.cgpa),
+        careerReadiness: 0,
+        overallSkillScore: 0,
+        headline: '',
+        bio: '',
+        location: '',
+        linkedin: '',
+        github: '',
+        portfolio: '',
+        resumeUrl: '',
+        resumeFileName: '',
+        skills: {},
+        projects: [],
+        education: [],
+        certifications: [],
+        achievements: [],
+        atsScore: 0,
+        profileCompleteness: 40,
+        status: 'ACTIVE' as const,
+      };
+      try {
+        await dbService.saveStudentProfile(newStudentProfile);
+      } catch (saveErr) {
+        console.warn('saveStudentProfile during registration error:', saveErr);
+      }
+
+      // 4. Set logged-in state if session active
       if (authData.session) {
         const newUser: User = {
           id: userId,
