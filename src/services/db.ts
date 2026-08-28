@@ -1070,14 +1070,16 @@ export const dbService = {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .ilike('role', 'student')
-        .eq('deleted', false)
+        .or('role.ilike.student,role.is.null')
         .order('created_at', { ascending: false });
       if (error) {
         console.warn('Supabase getStudents error:', error.message);
         return [];
       }
-      return (data || []).map(mapStudentProfileFromDb);
+      const activeStudents = (data || [])
+        .filter((row) => row && !row.deleted && (!row.role || row.role.toLowerCase() === 'student'))
+        .map(mapStudentProfileFromDb);
+      return activeStudents;
     } catch (err) {
       console.warn('Supabase getStudents exception:', err);
       return [];

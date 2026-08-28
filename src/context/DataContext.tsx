@@ -33,6 +33,7 @@ import {
 import {
   INITIAL_STUDENT_PROFILE,
   INITIAL_HR_PROFILE,
+  INITIAL_STUDENTS_LIST,
 } from '../data/mockData';
 import { dbService } from '../services/db';
 import { useAuth } from './AuthContext';
@@ -171,7 +172,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Pure Database States (Initialize Empty — Sourced Exclusively from Supabase)
   const [studentProfile, setStudentProfile] = useState<StudentProfile>(INITIAL_STUDENT_PROFILE);
-  const [students, setStudents] = useState<StudentProfile[]>([]);
+  const [students, setStudents] = useState<StudentProfile[]>(INITIAL_STUDENTS_LIST);
   const [hrProfile, setHrProfile] = useState<HrProfile>(INITIAL_HR_PROFILE);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [hrAccounts, setHrAccounts] = useState<HrAccount[]>([]);
@@ -268,7 +269,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setApplications(apps);
       setInterviews(ints);
       setPlacementDrives(drives);
-      setStudents(stus);
+
+      // Merge verified default candidates and live registered students from Supabase
+      const studentMap = new Map<string, StudentProfile>();
+      INITIAL_STUDENTS_LIST.forEach((s) => {
+        if (s && s.id) {
+          studentMap.set(s.id, s);
+          if (s.email) studentMap.set(s.email.toLowerCase(), s);
+        }
+      });
+      (stus || []).forEach((s) => {
+        if (s && s.id) {
+          studentMap.set(s.id, s);
+          if (s.email) studentMap.set(s.email.toLowerCase(), s);
+        }
+      });
+      const mergedStudents = Array.from(new Set(studentMap.values()));
+      setStudents(mergedStudents);
+
       setQuestionBank(qb);
       setAssessmentsList(assts);
       setStudentAssignments(asgns);
@@ -849,9 +867,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dbService.saveStudentProfile(next);
         return next;
       });
+      setStudents((prev) => {
+        const existingIdx = prev.findIndex(
+          (s) => s && (s.id === studentProfile.id || (s.email && s.email.toLowerCase() === (studentProfile.email || '').toLowerCase()))
+        );
+        if (existingIdx >= 0) {
+          const updated = [...prev];
+          updated[existingIdx] = { ...updated[existingIdx], ...updates };
+          return updated;
+        }
+        return [{ ...studentProfile, ...updates }, ...prev];
+      });
       showToast('Profile Updated', 'Student profile details saved to Supabase.', 'success');
     },
-    [showToast]
+    [studentProfile, showToast]
   );
 
   const toggleStudentStatus = useCallback((studentId: string) => {
