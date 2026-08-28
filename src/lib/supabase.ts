@@ -1,8 +1,16 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+const DEFAULT_SUPABASE_URL = 'https://yxcujbyopxoddqbysspp.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_AZtik9SXS-SnsKFUVqHEJQ__iTI3QID';
+
 const meta = (import.meta as any).env || {};
-const supabaseUrl: string = meta.VITE_SUPABASE_URL || '';
-const supabaseAnonKey: string = meta.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl: string = (meta.VITE_SUPABASE_URL && meta.VITE_SUPABASE_URL.trim() !== '') 
+  ? meta.VITE_SUPABASE_URL.trim() 
+  : DEFAULT_SUPABASE_URL;
+
+const supabaseAnonKey: string = (meta.VITE_SUPABASE_ANON_KEY && meta.VITE_SUPABASE_ANON_KEY.trim() !== '') 
+  ? meta.VITE_SUPABASE_ANON_KEY.trim() 
+  : DEFAULT_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl && 
@@ -12,10 +20,10 @@ export const isSupabaseConfigured = Boolean(
   supabaseUrl.startsWith('http')
 );
 
-// Initialize Supabase Client
+// Initialize Supabase Client with persistent fail-safe credentials
 export const supabase: SupabaseClient = createClient(
-  isSupabaseConfigured ? supabaseUrl.trim() : 'https://placeholder.supabase.co',
-  isSupabaseConfigured ? supabaseAnonKey.trim() : 'placeholder-anon-key',
+  supabaseUrl,
+  supabaseAnonKey,
   {
     auth: {
       persistSession: true,
