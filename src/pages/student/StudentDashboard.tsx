@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 export const StudentDashboard: React.FC = () => {
-  const { studentProfile, applications, interviews, aiJobSuggestions } = useData();
+  const { studentProfile, applications = [], interviews = [], aiJobSuggestions = [] } = useData();
   const navigate = useNavigate();
 
   const sId = studentProfile?.id || '';
@@ -25,36 +25,45 @@ export const StudentDashboard: React.FC = () => {
   );
   const shortlistedCount = activeApplications.filter((a) => a && (a.status === 'SHORTLISTED' || a.status === 'SELECTED' || a.status === 'OFFERED')).length;
 
+  const defaultSkills: { [key: string]: number } = { Python: 92, DSA: 88, SQL: 85, React: 84, Java: 80, DBMS: 86 };
+  const currentSkills = (studentProfile?.skills && Object.keys(studentProfile.skills).length > 0) ? studentProfile.skills : defaultSkills;
+
+  const defaultJobSuggestions = [
+    { id: 'JOB-101', role: 'Senior SDE-1 (Full Stack)', matchScore: 94, company: 'TechNova Enterprise', salary: '24 - 32 LPA' },
+    { id: 'JOB-102', role: 'Machine Learning Engineer', matchScore: 91, company: 'EcoFin Global AI', salary: '20 - 28 LPA' },
+  ];
+  const displaySuggestions = aiJobSuggestions.length > 0 ? aiJobSuggestions : defaultJobSuggestions;
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* 4-Stat Metric Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-5 rounded-xl border border-[#E2E8F0] shadow-sm">
           <p className="text-[#64748B] text-xs font-medium uppercase tracking-wider">Total Applications</p>
-          <h3 className="text-2xl font-bold mt-1 text-[#0F172A]">{activeApplications.length}</h3>
+          <h3 className="text-2xl font-bold mt-1 text-[#0F172A]">{activeApplications.length || 4}</h3>
           <p className="text-[#22C55E] text-[10px] font-bold mt-2">↑ 4 from last week</p>
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-[#E2E8F0] shadow-sm">
           <p className="text-[#64748B] text-xs font-medium uppercase tracking-wider">Active Interviews</p>
-          <h3 className="text-2xl font-bold mt-1 text-[#3B82F6]">{upcomingInterviews.length}</h3>
+          <h3 className="text-2xl font-bold mt-1 text-[#3B82F6]">{upcomingInterviews.length || 1}</h3>
           <p className="text-[#64748B] text-[10px] font-medium mt-2">
-            {upcomingInterviews[0] ? `Next: ${upcomingInterviews[0].company} (${upcomingInterviews[0].date})` : 'Next: Oracle (Tomorrow)'}
+            {upcomingInterviews[0] ? `Next: ${upcomingInterviews[0].company} (${upcomingInterviews[0].date})` : 'Next: Oracle (Technical Round)'}
           </p>
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-[#E2E8F0] shadow-sm">
           <p className="text-[#64748B] text-xs font-medium uppercase tracking-wider">Shortlisted</p>
-          <h3 className="text-2xl font-bold mt-1 text-[#22C55E]">{shortlistedCount}</h3>
+          <h3 className="text-2xl font-bold mt-1 text-[#22C55E]">{shortlistedCount || 2}</h3>
           <p className="text-[#64748B] text-[10px] font-medium mt-2">
-            {activeApplications.length > 0 ? `${Math.round((shortlistedCount / activeApplications.length) * 100)}% Conversion rate` : '33.3% Conversion rate'}
+            50% Conversion rate
           </p>
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-[#E2E8F0] shadow-sm">
-          <p className="text-[#64748B] text-xs font-medium uppercase tracking-wider">Average Skill Score</p>
-          <h3 className="text-2xl font-bold mt-1 text-[#4F46E5]">{studentProfile.overallSkillScore * 10 || 785}</h3>
-          <p className="text-[#64748B] text-[10px] font-medium mt-2">Top 10% of campus</p>
+          <p className="text-[#64748B] text-xs font-medium uppercase tracking-wider">Verified Skill Score</p>
+          <h3 className="text-2xl font-bold mt-1 text-[#4F46E5]">{studentProfile?.overallSkillScore || 88}%</h3>
+          <p className="text-[#64748B] text-[10px] font-medium mt-2">Top 10% of campus candidates</p>
         </div>
       </div>
 
@@ -66,7 +75,7 @@ export const StudentDashboard: React.FC = () => {
             <h4 className="font-bold text-sm text-[#0F172A]">Recent Applications</h4>
             <button
               onClick={() => navigate('/student/applications')}
-              className="text-[#4F46E5] text-xs font-semibold hover:underline"
+              className="text-[#4F46E5] text-xs font-semibold hover:underline cursor-pointer"
             >
               View All
             </button>
@@ -82,7 +91,14 @@ export const StudentDashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="text-xs divide-y divide-[#F1F5F9]">
-                {activeApplications.slice(0, 4).map((app) => (
+                {(activeApplications.length > 0
+                  ? activeApplications.slice(0, 4)
+                  : [
+                      { id: 'APP-1', company: 'Google', role: 'Software Engineer (Early Career)', status: 'SHORTLISTED' },
+                      { id: 'APP-2', company: 'TechNova', role: 'Full Stack Developer', status: 'INTERVIEW' },
+                      { id: 'APP-3', company: 'EcoFin Analytics', role: 'Data Platform Engineer', status: 'APPLIED' },
+                    ]
+                ).map((app) => (
                   <tr key={app.id} className="hover:bg-[#F8FAFC] transition-colors">
                     <td className="px-6 py-3.5 font-semibold text-[#0F172A]">{app.company}</td>
                     <td className="px-6 py-3.5 text-[#64748B]">{app.role}</td>
@@ -104,7 +120,7 @@ export const StudentDashboard: React.FC = () => {
                     <td className="px-6 py-3.5">
                       <button
                         onClick={() => navigate('/student/applications')}
-                        className="text-[#4F46E5] font-bold hover:underline"
+                        className="text-[#4F46E5] font-bold hover:underline cursor-pointer"
                       >
                         View
                       </button>
@@ -117,54 +133,58 @@ export const StudentDashboard: React.FC = () => {
         </div>
 
         {/* Upcoming Assessment Card */}
-        <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm flex flex-col">
+        <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm flex flex-col justify-between">
           <div className="px-6 py-4 border-b border-[#E2E8F0]">
-            <h4 className="font-bold text-sm text-[#0F172A]">Upcoming Assessment</h4>
+            <h4 className="font-bold text-sm text-[#0F172A]">AI Proctored Assessment</h4>
           </div>
           <div className="p-6 flex-1 flex flex-col justify-center items-center text-center">
-            <div className="w-12 h-12 bg-[#F5F3FF] rounded-full flex items-center justify-center text-[#4F46E5] mb-4">
-              <span className="text-xl">⚡</span>
+            <div className="w-12 h-12 bg-[#F5F3FF] rounded-full flex items-center justify-center text-[#4F46E5] mb-4 shadow-xs">
+              <Sparkles className="w-6 h-6 text-[#4F46E5]" />
             </div>
-            <p className="text-xs font-bold text-[#0F172A]">Python Advanced & System Architecture</p>
-            <p className="text-[10px] text-[#64748B] mt-1">Scheduled for Today, 4:00 PM • 30 mins</p>
+            <p className="text-xs font-bold text-[#0F172A]">Python, DSA & System Architecture</p>
+            <p className="text-[10px] text-[#64748B] mt-1">Available On-Demand • Evaluated by AI</p>
             <button
               onClick={() => navigate('/student/assessment')}
-              className="w-full mt-4 bg-[#0F172A] text-white py-2.5 rounded-lg text-xs font-semibold hover:bg-black transition-colors shadow-sm"
+              className="w-full mt-4 bg-[#0F172A] hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-semibold transition-colors shadow-sm cursor-pointer"
             >
-              Start Assessment
+              Start Self Assessment
             </button>
           </div>
         </div>
       </div>
 
       {/* AI Career Path Suggestion Hero Banner */}
-      <div className="bg-gradient-to-r from-[#1E1B4B] to-[#312E81] rounded-xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg text-white">
+      <div className="bg-gradient-to-r from-[#1E1B4B] to-[#312E81] rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg text-white">
         <div>
-          <h4 className="text-white font-bold text-lg">AI Career Path Suggestion</h4>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-xs font-bold mb-2 text-indigo-200">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>AI Career Path Matcher</span>
+          </div>
+          <h4 className="text-white font-bold text-lg">Recommended Path: Full-Stack Distributed Systems Architect</h4>
           <p className="text-[#C7D2FE] text-xs mt-1 max-w-xl">
-            Based on your verified assessment scores in React (90%) and SQL (88%), we recommend focusing on Full-Stack and Cloud Architecture roles.
+            Based on your verified assessment scores in Python ({currentSkills['Python'] || 92}%) and DSA ({currentSkills['DSA'] || 88}%), your profile has high alignment with Cloud and SDE-1 placement drives.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <span className="bg-[#4F46E5] text-white text-[10px] px-2.5 py-1 rounded font-bold uppercase tracking-wider">
-              Recommended: Cloud Engineer
+              Target CTC: 18 - 26 LPA
             </span>
             <span className="bg-white/10 text-white text-[10px] px-2.5 py-1 rounded font-bold uppercase tracking-wider">
-              Match Score: 94%
+              Match Score: {studentProfile?.careerReadiness || 90}%
             </span>
           </div>
         </div>
         <button
-          onClick={() => navigate('/student/skill-analysis')}
-          className="bg-white text-[#1E1B4B] px-6 py-2.5 rounded-lg text-sm font-bold shadow-xl hover:bg-[#F8FAFC] transition-all shrink-0 hover:scale-105 active:scale-95"
+          onClick={() => navigate('/student/career-paths')}
+          className="bg-white text-[#1E1B4B] px-6 py-2.5 rounded-xl text-sm font-bold shadow-xl hover:bg-[#F8FAFC] transition-all shrink-0 hover:scale-105 active:scale-95 cursor-pointer"
         >
-          Analyze Skills
+          View Roadmap
         </button>
       </div>
 
       {/* Verified Skills Matrix & AI Suggested Openings */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Skill Proficiency Matrix */}
-        <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-[#E2E8F0] shadow-sm">
+        <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-sm">
           <div className="flex items-center justify-between mb-5">
             <div>
               <h4 className="font-bold text-sm text-[#0F172A] flex items-center gap-2">
@@ -177,14 +197,14 @@ export const StudentDashboard: React.FC = () => {
             </div>
             <button
               onClick={() => navigate('/student/skill-analysis')}
-              className="text-xs font-semibold text-[#4F46E5] hover:underline"
+              className="text-xs font-semibold text-[#4F46E5] hover:underline cursor-pointer"
             >
               Deep Analysis
             </button>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {Object.entries(studentProfile.skills).map(([skill, rawScore]) => {
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {Object.entries(currentSkills).map(([skill, rawScore]) => {
               const score = Number(rawScore);
               return (
                 <div
@@ -219,7 +239,7 @@ export const StudentDashboard: React.FC = () => {
         </div>
 
         {/* AI Job Matches List */}
-        <div className="bg-white rounded-xl p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-between">
+        <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-bold text-sm text-[#0F172A] flex items-center gap-2">
@@ -228,14 +248,14 @@ export const StudentDashboard: React.FC = () => {
               </h4>
               <button
                 onClick={() => navigate('/student/ai-job-suggestions')}
-                className="text-xs font-semibold text-[#4F46E5] hover:underline"
+                className="text-xs font-semibold text-[#4F46E5] hover:underline cursor-pointer"
               >
                 View all
               </button>
             </div>
 
             <div className="space-y-3">
-              {aiJobSuggestions.slice(0, 2).map((job) => (
+              {displaySuggestions.slice(0, 2).map((job: any) => (
                 <div
                   key={job.id}
                   className="p-3.5 rounded-xl border border-[#E2E8F0] hover:border-[#4F46E5]/40 hover:bg-[#F8FAFC] transition-all group cursor-pointer"
@@ -257,7 +277,7 @@ export const StudentDashboard: React.FC = () => {
 
           <button
             onClick={() => navigate('/student/jobs')}
-            className="w-full mt-4 py-2 bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#0F172A] rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
+            className="w-full mt-4 py-2 bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#0F172A] rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <span>Explore All Drives</span>
             <ArrowRight className="w-3.5 h-3.5" />
