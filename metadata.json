@@ -1,0 +1,6 @@
+{
+  "name": "CareerFlow",
+  "description": "Comprehensive Enterprise Career & Campus Placement Automation Platform for Students, HRs, and Administrators",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
