@@ -36,6 +36,7 @@ export const StudentAssignments: React.FC = () => {
     studentAssessmentRequests,
     submitStudentAssessmentAnswers,
     dispatchAiAssessmentDirectly,
+    requestRetest,
   } = useData();
 
   const [searchQuery, setSearchQuery] = useState('');

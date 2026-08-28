@@ -27,6 +27,9 @@ export const HrPostJob: React.FC = () => {
   const [salary, setSalary] = useState('18.0 - 24.0 LPA');
   const [minCgpa, setMinCgpa] = useState(7.5);
   const [skillsInput, setSkillsInput] = useState('Python, SQL, DSA, System Design, React');
+  const [description, setDescription] = useState(
+    'We are seeking high-performing Graduate Software Engineers to develop distributed backend microservices and modern web interfaces.'
+  );
   const [isGeneratingWithAi, setIsGeneratingWithAi] = useState(false);
 
   const handleAiAutoFill = (jobRole: string) => {

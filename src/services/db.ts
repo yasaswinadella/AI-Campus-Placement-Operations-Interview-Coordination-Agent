@@ -355,12 +355,6 @@ export function mapStudentProfileToDb(p: Partial<StudentProfile>): any {
 
 // 8. Question Bank & Assessment Mappers
 export function mapBankQuestionFromDb(row: any): BankQuestion {
-  let options = row.options || [];
-  if (!Array.isArray(options) || options.length === 0) {
-    if (row.option_a || row.option_b || row.option_c || row.option_d) {
-      options = [row.option_a || '', row.option_b || '', row.option_c || '', row.option_d || ''];
-    }
-  }
   return {
     id: row.id,
     type: row.type || 'MCQ',
@@ -370,7 +364,10 @@ export function mapBankQuestionFromDb(row: any): BankQuestion {
     aiStatus: row.ai_status || row.aiStatus || 'AI Verified',
     aiFeedback: row.ai_feedback || row.aiFeedback || '',
     question: row.question || '',
-    options,
+    optionA: row.option_a || row.optionA || (Array.isArray(row.options) ? row.options[0] : '') || '',
+    optionB: row.option_b || row.optionB || (Array.isArray(row.options) ? row.options[1] : '') || '',
+    optionC: row.option_c || row.optionC || (Array.isArray(row.options) ? row.options[2] : '') || '',
+    optionD: row.option_d || row.optionD || (Array.isArray(row.options) ? row.options[3] : '') || '',
     correctAnswer: row.correct_answer || row.correctAnswer || '',
     explanation: row.explanation || '',
     problemStatement: row.problem_statement || row.problemStatement || '',
@@ -395,13 +392,10 @@ export function mapBankQuestionToDb(q: Partial<BankQuestion>): any {
   if (q.aiStatus !== undefined) row.ai_status = q.aiStatus;
   if (q.aiFeedback !== undefined) row.ai_feedback = q.aiFeedback;
   if (q.question !== undefined) row.question = q.question;
-  if (q.options !== undefined) {
-    row.options = q.options;
-    row.option_a = q.options[0] || null;
-    row.option_b = q.options[1] || null;
-    row.option_c = q.options[2] || null;
-    row.option_d = q.options[3] || null;
-  }
+  if (q.optionA !== undefined) row.option_a = q.optionA;
+  if (q.optionB !== undefined) row.option_b = q.optionB;
+  if (q.optionC !== undefined) row.option_c = q.optionC;
+  if (q.optionD !== undefined) row.option_d = q.optionD;
   if (q.correctAnswer !== undefined) row.correct_answer = q.correctAnswer;
   if (q.explanation !== undefined) row.explanation = q.explanation;
   if (q.problemStatement !== undefined) row.problem_statement = q.problemStatement;
