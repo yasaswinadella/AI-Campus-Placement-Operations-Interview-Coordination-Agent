@@ -727,6 +727,41 @@ export const LoginPage: React.FC = () => {
                       </>
                     )}
                   </button>
+
+                  {/* Admin Quick Fill Credentials */}
+                  {activeTab === 'ADMIN' && (
+                    <div className="pt-3 border-t border-slate-100 space-y-2">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+                        Administrator Access Profiles
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRoleId('yashu_admin1');
+                            setEmail('yasaswinadella.1800@gmail.com');
+                            setPassword('admin123');
+                          }}
+                          className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100 text-left transition-colors cursor-pointer"
+                        >
+                          <div className="font-bold text-xs text-purple-900">Admin 1 (Yashu)</div>
+                          <div className="text-[10px] text-purple-700 font-mono">yashu_admin1</div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRoleId('teju_admin2');
+                            setEmail('241fa04154@gmail.com');
+                            setPassword('tejasai');
+                          }}
+                          className="p-2.5 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-left transition-colors cursor-pointer"
+                        >
+                          <div className="font-bold text-xs text-indigo-900">Admin 2 (Teju)</div>
+                          <div className="text-[10px] text-indigo-700 font-mono">teju_admin2</div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </form>
               ) : (
             /* Register Form */

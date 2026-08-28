@@ -305,10 +305,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       // 2. Authenticate against Supabase Auth (Real credentials)
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      let { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: emailKey,
         password: passwordKey,
       });
+
+      if ((authError || !authData?.user) && role === 'ADMIN') {
+        const enteredAdminId = (credentials.id || '').trim().toLowerCase();
+        if (isValidAdminId(enteredAdminId)) {
+          const canonicalId = getCanonicalAdminId(enteredAdminId);
+          const adminName = canonicalId === 'yashu_admin1' ? 'Yashu (Admin 1)' : 'Teju (Admin 2)';
+          
+          await supabase.auth.signUp({
+            email: emailKey,
+            password: passwordKey,
+            options: {
+              data: {
+                name: adminName,
+                role: 'admin',
+                admin_id: canonicalId,
+              },
+            },
+          });
+
+          const retry = await supabase.auth.signInWithPassword({
+            email: emailKey,
+            password: passwordKey,
+          });
+
+          if (retry.data?.user) {
+            authData = retry.data;
+            authError = null;
+          }
+        }
+      }
 
       if (authError || !authData?.user) {
         return {
