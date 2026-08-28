@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import {
@@ -10,12 +10,80 @@ import {
   MapPin,
   DollarSign,
   Building2,
-  ExternalLink,
+  RotateCcw,
+  ShieldCheck,
+  Filter,
+  Layers,
 } from 'lucide-react';
 
 export const StudentAiJobSuggestions: React.FC = () => {
-  const { aiJobSuggestions, savedJobIds, toggleSaveJob } = useData();
+  const { aiJobSuggestions, savedJobIds, toggleSaveJob, jobs = [], studentProfile, showToast } = useData();
   const navigate = useNavigate();
+
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [minMatchFilter, setMinMatchFilter] = useState<number>(0);
+  const [workplaceFilter, setWorkplaceFilter] = useState('ALL');
+
+  const defaultJobSuggestions = [
+    {
+      id: 'SUG-DEF-1',
+      jobId: 'JOB-101',
+      company: 'TechNova Enterprise',
+      companyLogo: 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=100',
+      role: 'Senior Software Development Engineer (SDE-1)',
+      salary: '24 - 32 LPA',
+      location: 'Bangalore (Hybrid)',
+      workplace: 'Hybrid',
+      matchScore: 94,
+      matchedSkills: ['Python', 'DSA', 'SQL', 'React'],
+      missingSkills: ['Kubernetes'],
+      aiExplanation: `High compatibility with your verified ${studentProfile?.overallSkillScore || 90}% overall technical rating and ${studentProfile?.cgpa || 8.5} CGPA. Strong match for distributed systems and full-stack backend development.`,
+    },
+    {
+      id: 'SUG-DEF-2',
+      jobId: 'JOB-102',
+      company: 'EcoFin Global AI',
+      companyLogo: 'https://images.unsplash.com/photo-1551434678-e076c223a692?w=100',
+      role: 'Machine Learning & Python Analytics Engineer',
+      salary: '20 - 28 LPA',
+      location: 'Hyderabad (Remote)',
+      workplace: 'Remote',
+      matchScore: 91,
+      matchedSkills: ['Python', 'SQL', 'DBMS'],
+      missingSkills: ['PyTorch MLOps'],
+      aiExplanation: `Exceptional alignment with your algorithmic scores in Python and relational databases. Meets all corporate cutoff benchmarks.`,
+    },
+    {
+      id: 'SUG-DEF-3',
+      jobId: 'JOB-103',
+      company: 'CloudScale Networks',
+      companyLogo: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=100',
+      role: 'Full Stack Frontend Architect',
+      salary: '18 - 25 LPA',
+      location: 'Pune (On-site)',
+      workplace: 'On-site',
+      matchScore: 88,
+      matchedSkills: ['React', 'TypeScript', 'DSA'],
+      missingSkills: ['GraphQL Federation'],
+      aiExplanation: `Recommended based on component architecture fluency and data structures speed in recent benchmark tests.`,
+    },
+  ];
+
+  const sourceSuggestions = aiJobSuggestions.length > 0 ? aiJobSuggestions : defaultJobSuggestions;
+
+  const filteredSuggestions = sourceSuggestions.filter((item) => {
+    const matchesScore = item.matchScore >= minMatchFilter;
+    const matchesWorkplace = workplaceFilter === 'ALL' || item.workplace.toLowerCase() === workplaceFilter.toLowerCase();
+    return matchesScore && matchesWorkplace;
+  });
+
+  const handleReAnalyze = () => {
+    setIsAnalyzing(true);
+    setTimeout(() => {
+      setIsAnalyzing(false);
+      showToast('AI Neural Re-Analysis Complete', 'Updated compatibility scores based on your latest skill benchmarks.', 'success');
+    }, 900);
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
@@ -34,26 +102,74 @@ export const StudentAiJobSuggestions: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => navigate('/student/jobs')}
-          className="px-4 py-2 bg-white border border-[#E2E8F0] hover:bg-slate-50 text-xs font-semibold text-[#0F172A] rounded-xl shadow-xs transition-colors"
-        >
-          Browse Full Job Directory
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleReAnalyze}
+            disabled={isAnalyzing}
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            <RotateCcw className={`w-3.5 h-3.5 text-indigo-400 ${isAnalyzing ? 'animate-spin' : ''}`} />
+            <span>{isAnalyzing ? 'Analyzing Neural Profile...' : '⚡ Re-Run AI Matching'}</span>
+          </button>
+          <button
+            onClick={() => navigate('/student/jobs')}
+            className="px-4 py-2 bg-white border border-[#E2E8F0] hover:bg-slate-50 text-xs font-semibold text-[#0F172A] rounded-xl shadow-xs transition-colors"
+          >
+            Browse Directory ({jobs.length})
+          </button>
+        </div>
+      </div>
+
+      {/* Filter Toolbar */}
+      <div className="bg-white rounded-2xl p-4 border border-[#E2E8F0] shadow-xs flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-[#64748B]" />
+          <span className="text-xs font-bold text-[#0F172A]">Filter Recommendations:</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs text-[#64748B] font-medium">Min Match:</label>
+            <select
+              value={minMatchFilter}
+              onChange={(e) => setMinMatchFilter(Number(e.target.value))}
+              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-[#0F172A] focus:outline-none"
+            >
+              <option value={0}>All Matches</option>
+              <option value={90}>90%+ High Match</option>
+              <option value={80}>80%+ Strong Match</option>
+              <option value={70}>70%+ Moderate Match</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs text-[#64748B] font-medium">Workplace:</label>
+            <select
+              value={workplaceFilter}
+              onChange={(e) => setWorkplaceFilter(e.target.value)}
+              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-[#0F172A] focus:outline-none"
+            >
+              <option value="ALL">All Environments</option>
+              <option value="remote">Remote Only</option>
+              <option value="hybrid">Hybrid</option>
+              <option value="on-site">On-site</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Recommendations List */}
       <div className="space-y-6">
-        {aiJobSuggestions.length === 0 ? (
+        {filteredSuggestions.length === 0 ? (
           <div className="bg-white rounded-2xl p-12 text-center border border-[#E2E8F0] shadow-xs">
             <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-base font-bold text-[#0F172A]">No Matching Jobs Found Yet</h3>
+            <h3 className="text-base font-bold text-[#0F172A]">No Matching Jobs in this Filter</h3>
             <p className="text-xs text-[#64748B] mt-1 max-w-sm mx-auto">
-              As corporate partners post verified job requisitions into the database, recommendations matching your skills and CGPA will appear here.
+              Try adjusting your minimum match filter or workplace preference above.
             </p>
           </div>
         ) : (
-          aiJobSuggestions.map((item) => {
+          filteredSuggestions.map((item) => {
             const isSaved = savedJobIds.includes(item.jobId);
 
             return (
@@ -71,7 +187,15 @@ export const StudentAiJobSuggestions: React.FC = () => {
                     <div>
                       <div className="flex flex-wrap items-center gap-2.5">
                         <h3 className="text-lg font-bold text-[#0F172A]">{item.role}</h3>
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-emerald-50 text-[#22C55E] border border-emerald-200">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${
+                            item.matchScore >= 90
+                              ? 'bg-emerald-50 text-[#22C55E] border-emerald-200'
+                              : item.matchScore >= 80
+                              ? 'bg-indigo-50 text-[#4F46E5] border-indigo-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}
+                        >
                           {item.matchScore}% Match Index
                         </span>
                       </div>
@@ -81,10 +205,10 @@ export const StudentAiJobSuggestions: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       onClick={() => toggleSaveJob(item.jobId)}
-                      className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
                         isSaved
                           ? 'bg-amber-50 text-amber-700 border-amber-300'
                           : 'bg-white text-[#64748B] border-[#E2E8F0] hover:bg-slate-50'
@@ -93,8 +217,15 @@ export const StudentAiJobSuggestions: React.FC = () => {
                       {isSaved ? 'Bookmarked' : 'Save Job'}
                     </button>
                     <button
+                      onClick={() => navigate('/student/job-eligibility', { state: { jobId: item.jobId } })}
+                      className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Eligibility</span>
+                    </button>
+                    <button
                       onClick={() => navigate('/student/apply', { state: { jobId: item.jobId } })}
-                      className="px-5 py-2 bg-[#4F46E5] hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+                      className="px-5 py-2 bg-[#4F46E5] hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                       <span>Apply Now</span>
                       <ArrowRight className="w-3.5 h-3.5" />

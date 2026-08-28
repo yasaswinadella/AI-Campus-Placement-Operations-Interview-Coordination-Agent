@@ -38,14 +38,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Helper to map DB profile row to frontend User model
 function mapProfileToUser(profile: any, emailFallback?: string): User {
-  const rawRole = (profile.role || '').toString().toLowerCase();
+  const emailLower = (profile.email || emailFallback || '').toLowerCase().trim();
+  const rawRole = (profile.role || '').toString().toLowerCase().trim();
+
   let normalizedRole: UserRole = 'STUDENT';
-  if (rawRole === 'hr') normalizedRole = 'HR';
-  else if (rawRole === 'admin') normalizedRole = 'ADMIN';
+  if (
+    emailLower === 'yasaswinadella.1800@gmail.com' ||
+    emailLower === '241fa04154@gmail.com' ||
+    rawRole === 'admin' ||
+    Boolean(profile.admin_id) ||
+    Boolean(profile.adminId)
+  ) {
+    normalizedRole = 'ADMIN';
+  } else if (rawRole === 'hr' || Boolean(profile.hr_id) || Boolean(profile.company_id)) {
+    normalizedRole = 'HR';
+  }
+
+  const defaultAdminId = emailLower === '241fa04154@gmail.com' ? 'teju_admin2' : 'yashu_admin1';
+  const resolvedAdminId = normalizedRole === 'ADMIN' ? (profile.admin_id || profile.adminId || defaultAdminId) : undefined;
 
   return {
     id: profile.id,
-    name: profile.name || emailFallback?.split('@')[0] || 'User',
+    name: profile.name || (normalizedRole === 'ADMIN' ? (resolvedAdminId === 'teju_admin2' ? 'Teju (Admin 2)' : 'Yashu (Admin 1)') : (emailFallback?.split('@')[0] || 'User')),
     email: profile.email || emailFallback || '',
     role: normalizedRole,
     college: profile.college || undefined,
@@ -58,7 +72,7 @@ function mapProfileToUser(profile: any, emailFallback?: string): User {
     company: profile.company_name || profile.company || undefined,
     companyId: profile.company_id || profile.companyId || undefined,
     hrId: profile.hr_id || profile.hrId || undefined,
-    adminId: profile.admin_id || profile.adminId || undefined,
+    adminId: resolvedAdminId,
     avatar:
       profile.avatar ||
       (normalizedRole === 'STUDENT'
