@@ -42,8 +42,8 @@ export const Sidebar: React.FC = () => {
 
   const studentPrimaryNav = [
     { label: 'Dashboard', path: '/student/dashboard', icon: LayoutDashboard },
-    { label: 'Assignments', path: '/student/assignments', icon: FileCheck2 },
     { label: 'Self Assessment', path: '/student/assessment', icon: BrainCircuit },
+    { label: 'Test Results', path: '/student/results', icon: BarChart3 },
     { label: 'Jobs', path: '/student/jobs', icon: Briefcase },
     { label: 'Applications', path: '/student/applications', icon: Layers },
     { label: 'Interviews', path: '/student/interview', icon: Calendar },
@@ -51,8 +51,6 @@ export const Sidebar: React.FC = () => {
   ];
 
   const studentQuickLinks = [
-    { label: 'Assigned Tests', path: '/student/assignments', icon: FileCheck2 },
-    { label: 'Test Results', path: '/student/results', icon: BarChart3 },
     { label: 'Retest Center', path: '/student/retest', icon: RotateCcw },
     { label: 'Skill Analysis', path: '/student/skill-analysis', icon: BrainCircuit },
     { label: 'Skill Gaps', path: '/student/skill-gaps', icon: TrendingDown },
@@ -86,15 +84,12 @@ export const Sidebar: React.FC = () => {
     { label: 'Partner Companies', path: '/admin/companies', icon: Building2 },
     { label: 'Placement Drives', path: '/admin/placement-drives', icon: Megaphone },
     { label: 'Campus Interviews', path: '/admin/interviews', icon: Calendar },
-    { label: 'Assessments', path: '/admin/assessments', icon: FileCheck2 },
     { label: 'Offers Ledger', path: '/admin/offers', icon: Award },
   ];
 
   const adminQuickLinks = [
     { label: 'Skill Analytics', path: '/admin/skill-analytics', icon: BarChart3 },
     { label: 'Accreditation Reports', path: '/admin/reports', icon: LineChart },
-    { label: 'Candidate Matching', path: '/admin/candidate-matching', icon: Binary },
-    { label: 'All Applications', path: '/admin/applications', icon: Layers },
     { label: 'Platform Settings', path: '/admin/settings', icon: Settings },
   ];
 

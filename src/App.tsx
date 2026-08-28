@@ -85,7 +85,7 @@ export function App() {
             >
               <Route index element={<Navigate to="/student/dashboard" replace />} />
               <Route path="dashboard" element={<StudentDashboard />} />
-              <Route path="assignments" element={<StudentAssignments />} />
+              <Route path="assignments" element={<Navigate to="/student/assessment" replace />} />
               <Route path="assessment" element={<StudentAssessment />} />
               <Route path="results" element={<StudentResults />} />
               <Route path="skill-analysis" element={<StudentSkillAnalysis />} />
@@ -138,7 +138,7 @@ export function App() {
               <Route path="companies" element={<AdminCompanies />} />
               <Route path="placement-drives" element={<AdminPlacementDrives />} />
               <Route path="interviews" element={<AdminInterviews />} />
-              <Route path="assessments" element={<AdminAssessments />} />
+              <Route path="assessments" element={<Navigate to="/admin/skill-analytics" replace />} />
               <Route path="skill-analytics" element={<AdminSkillAnalytics />} />
               <Route path="offers" element={<AdminOffers />} />
               <Route path="reports" element={<AdminReports />} />

@@ -118,11 +118,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearch }) => {
         </div>
 
         {/* Quick Role Switcher */}
-        <div className="relative hidden xl:block">
+        <div className="relative">
           <button
             id="role-switch-btn"
             onClick={() => setShowRoleSwitcher(!showRoleSwitcher)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] hover:bg-white text-xs font-semibold text-[#0F172A] transition-colors shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] hover:bg-white text-xs font-semibold text-[#0F172A] transition-colors shadow-xs cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5 text-[#4F46E5]" />
             <span>Switch Role</span>

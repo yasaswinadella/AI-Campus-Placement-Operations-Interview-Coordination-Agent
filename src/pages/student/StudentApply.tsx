@@ -14,23 +14,41 @@ import {
 } from 'lucide-react';
 
 export const StudentApply: React.FC = () => {
-  const { jobs, studentProfile, applyJob, applications } = useData();
+  const { jobs = [], studentProfile, applyJob, applications = [] } = useData();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const defaultJobId = location.state?.jobId || jobs[0]?.id || 'JOB-101';
+  const safeJobs = jobs || [];
+  const safeApps = applications || [];
+
+  const defaultJob = {
+    id: 'JOB-101',
+    title: 'Senior Software Development Engineer (SDE-1)',
+    company: 'TechNova Enterprise',
+    companyLogo: 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=100',
+    salary: '24 - 32 LPA',
+    location: 'Bangalore (Hybrid)',
+    minCgpa: 7.5,
+    skills: ['Python', 'DSA', 'SQL', 'React'],
+    type: 'Full-time',
+    description: 'Core backend engineering and distributed platform services.',
+    status: 'ACTIVE',
+  };
+
+  const defaultJobId = location.state?.jobId || safeJobs[0]?.id || 'JOB-101';
   const [jobId, setJobId] = useState(defaultJobId);
   const [coverLetter, setCoverLetter] = useState(
     'I am excited to submit my candidacy for this position. My hands-on experience building distributed systems, full-stack React web apps, and algorithmic pipelines makes me a strong fit for your team.'
   );
-  const [resumeFileName, setResumeFileName] = useState(studentProfile.resumeFileName || 'John_Doe_Resume_2026.pdf');
-  const [portfolioUrl, setPortfolioUrl] = useState(studentProfile.portfolio || 'https://johndoe.dev');
-  const [linkedinUrl, setLinkedinUrl] = useState(studentProfile.linkedin || 'https://linkedin.com/in/johndoe-dev');
+  const [resumeFileName, setResumeFileName] = useState(studentProfile?.resumeFileName || 'Student_Resume_2026.pdf');
+  const [portfolioUrl, setPortfolioUrl] = useState(studentProfile?.portfolio || 'https://github.com/student');
+  const [linkedinUrl, setLinkedinUrl] = useState(studentProfile?.linkedin || 'https://linkedin.com/in/student');
   const [notes, setNotes] = useState('Available for immediate virtual technical rounds and campus interviews.');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const currentJob = jobs.find((j) => j.id === jobId) || jobs[0];
-  const alreadyApplied = applications.some((a) => a.jobId === jobId && a.studentId === studentProfile.id);
+  const currentJob = safeJobs.find((j) => j && j.id === jobId) || safeJobs[0] || defaultJob;
+  const sId = studentProfile?.id || '';
+  const alreadyApplied = safeApps.some((a) => a && a.jobId === jobId && (a.studentId === sId || !sId));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
