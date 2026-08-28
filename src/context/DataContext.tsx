@@ -34,6 +34,11 @@ import {
   INITIAL_STUDENT_PROFILE,
   INITIAL_HR_PROFILE,
   INITIAL_STUDENTS_LIST,
+  INITIAL_COMPANIES,
+  INITIAL_JOBS,
+  INITIAL_PLACEMENT_DRIVES,
+  INITIAL_APPLICATIONS,
+  INITIAL_INTERVIEWS,
 } from '../data/mockData';
 import { dbService } from '../services/db';
 import { useAuth } from './AuthContext';
@@ -174,12 +179,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [studentProfile, setStudentProfile] = useState<StudentProfile>(INITIAL_STUDENT_PROFILE);
   const [students, setStudents] = useState<StudentProfile[]>(INITIAL_STUDENTS_LIST);
   const [hrProfile, setHrProfile] = useState<HrProfile>(INITIAL_HR_PROFILE);
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const [companies, setCompanies] = useState<Company[]>(INITIAL_COMPANIES);
   const [hrAccounts, setHrAccounts] = useState<HrAccount[]>([]);
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [applications, setApplications] = useState<JobApplication[]>([]);
-  const [interviews, setInterviews] = useState<Interview[]>([]);
-  const [placementDrives, setPlacementDrives] = useState<PlacementDrive[]>([]);
+  const [jobs, setJobs] = useState<Job[]>(INITIAL_JOBS);
+  const [applications, setApplications] = useState<JobApplication[]>(INITIAL_APPLICATIONS);
+  const [interviews, setInterviews] = useState<Interview[]>(INITIAL_INTERVIEWS);
+  const [placementDrives, setPlacementDrives] = useState<PlacementDrive[]>(INITIAL_PLACEMENT_DRIVES);
 
   // Assessments & Question Bank
   const [questionBank, setQuestionBank] = useState<BankQuestion[]>([]);
@@ -263,12 +268,37 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dbService.getRecycleBin(),
       ]);
 
-      setCompanies(comps);
+      // Merge companies
+      const companyMap = new Map<string, Company>();
+      INITIAL_COMPANIES.forEach((c) => { if (c && c.id) companyMap.set(c.id, c); });
+      (comps || []).forEach((c) => { if (c && c.id) companyMap.set(c.id, c); });
+      setCompanies(Array.from(companyMap.values()));
+
       setHrAccounts(hrs);
-      setJobs(jbs);
-      setApplications(apps);
-      setInterviews(ints);
-      setPlacementDrives(drives);
+
+      // Merge jobs
+      const jobMap = new Map<string, Job>();
+      INITIAL_JOBS.forEach((j) => { if (j && j.id) jobMap.set(j.id, j); });
+      (jbs || []).forEach((j) => { if (j && j.id) jobMap.set(j.id, j); });
+      setJobs(Array.from(jobMap.values()));
+
+      // Merge applications
+      const appMap = new Map<string, JobApplication>();
+      INITIAL_APPLICATIONS.forEach((a) => { if (a && a.id) appMap.set(a.id, a); });
+      (apps || []).forEach((a) => { if (a && a.id) appMap.set(a.id, a); });
+      setApplications(Array.from(appMap.values()));
+
+      // Merge interviews
+      const intMap = new Map<string, Interview>();
+      INITIAL_INTERVIEWS.forEach((i) => { if (i && i.id) intMap.set(i.id, i); });
+      (ints || []).forEach((i) => { if (i && i.id) intMap.set(i.id, i); });
+      setInterviews(Array.from(intMap.values()));
+
+      // Merge placement drives
+      const driveMap = new Map<string, PlacementDrive>();
+      INITIAL_PLACEMENT_DRIVES.forEach((d) => { if (d && d.id) driveMap.set(d.id, d); });
+      (drives || []).forEach((d) => { if (d && d.id) driveMap.set(d.id, d); });
+      setPlacementDrives(Array.from(driveMap.values()));
 
       // Merge verified default candidates and live registered students from Supabase
       const studentMap = new Map<string, StudentProfile>();
