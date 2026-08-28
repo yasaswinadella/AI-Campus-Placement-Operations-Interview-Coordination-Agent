@@ -25,14 +25,8 @@ export const StudentDashboard: React.FC = () => {
   );
   const shortlistedCount = activeApplications.filter((a) => a && (a.status === 'SHORTLISTED' || a.status === 'SELECTED' || a.status === 'OFFERED')).length;
 
-  const defaultSkills: { [key: string]: number } = { Python: 92, DSA: 88, SQL: 85, React: 84, Java: 80, DBMS: 86 };
+  const defaultSkills: { [key: string]: number } = { Python: 0, DSA: 0, SQL: 0, React: 0, Java: 0, DBMS: 0 };
   const currentSkills = (studentProfile?.skills && Object.keys(studentProfile.skills).length > 0) ? studentProfile.skills : defaultSkills;
-
-  const defaultJobSuggestions = [
-    { id: 'JOB-101', role: 'Senior SDE-1 (Full Stack)', matchScore: 94, company: 'TechNova Enterprise', salary: '24 - 32 LPA' },
-    { id: 'JOB-102', role: 'Machine Learning Engineer', matchScore: 91, company: 'EcoFin Global AI', salary: '20 - 28 LPA' },
-  ];
-  const displaySuggestions = aiJobSuggestions.length > 0 ? aiJobSuggestions : defaultJobSuggestions;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -40,30 +34,30 @@ export const StudentDashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-5 rounded-xl border border-[#E2E8F0] shadow-sm">
           <p className="text-[#64748B] text-xs font-medium uppercase tracking-wider">Total Applications</p>
-          <h3 className="text-2xl font-bold mt-1 text-[#0F172A]">{activeApplications.length || 4}</h3>
-          <p className="text-[#22C55E] text-[10px] font-bold mt-2">↑ 4 from last week</p>
+          <h3 className="text-2xl font-bold mt-1 text-[#0F172A]">{activeApplications.length}</h3>
+          <p className="text-[#64748B] text-[10px] font-medium mt-2">Active placement drives</p>
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-[#E2E8F0] shadow-sm">
           <p className="text-[#64748B] text-xs font-medium uppercase tracking-wider">Active Interviews</p>
-          <h3 className="text-2xl font-bold mt-1 text-[#3B82F6]">{upcomingInterviews.length || 1}</h3>
+          <h3 className="text-2xl font-bold mt-1 text-[#3B82F6]">{upcomingInterviews.length}</h3>
           <p className="text-[#64748B] text-[10px] font-medium mt-2">
-            {upcomingInterviews[0] ? `Next: ${upcomingInterviews[0].company} (${upcomingInterviews[0].date})` : 'Next: Oracle (Technical Round)'}
+            {upcomingInterviews[0] ? `Next: ${upcomingInterviews[0].company} (${upcomingInterviews[0].date})` : 'No upcoming interviews'}
           </p>
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-[#E2E8F0] shadow-sm">
           <p className="text-[#64748B] text-xs font-medium uppercase tracking-wider">Shortlisted</p>
-          <h3 className="text-2xl font-bold mt-1 text-[#22C55E]">{shortlistedCount || 2}</h3>
+          <h3 className="text-2xl font-bold mt-1 text-[#22C55E]">{shortlistedCount}</h3>
           <p className="text-[#64748B] text-[10px] font-medium mt-2">
-            50% Conversion rate
+            {activeApplications.length > 0 ? `${Math.round((shortlistedCount / activeApplications.length) * 100)}% Conversion` : '0% Conversion'}
           </p>
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-[#E2E8F0] shadow-sm">
           <p className="text-[#64748B] text-xs font-medium uppercase tracking-wider">Verified Skill Score</p>
-          <h3 className="text-2xl font-bold mt-1 text-[#4F46E5]">{studentProfile?.overallSkillScore || 88}%</h3>
-          <p className="text-[#64748B] text-[10px] font-medium mt-2">Top 10% of campus candidates</p>
+          <h3 className="text-2xl font-bold mt-1 text-[#4F46E5]">{studentProfile?.overallSkillScore || 0}%</h3>
+          <p className="text-[#64748B] text-[10px] font-medium mt-2">Evaluated via AI proctoring</p>
         </div>
       </div>
 
@@ -91,42 +85,31 @@ export const StudentDashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="text-xs divide-y divide-[#F1F5F9]">
-                {(activeApplications.length > 0
-                  ? activeApplications.slice(0, 4)
-                  : [
-                      { id: 'APP-1', company: 'Google', role: 'Software Engineer (Early Career)', status: 'SHORTLISTED' },
-                      { id: 'APP-2', company: 'TechNova', role: 'Full Stack Developer', status: 'INTERVIEW' },
-                      { id: 'APP-3', company: 'EcoFin Analytics', role: 'Data Platform Engineer', status: 'APPLIED' },
-                    ]
-                ).map((app) => (
-                  <tr key={app.id} className="hover:bg-[#F8FAFC] transition-colors">
-                    <td className="px-6 py-3.5 font-semibold text-[#0F172A]">{app.company}</td>
-                    <td className="px-6 py-3.5 text-[#64748B]">{app.role}</td>
-                    <td className="px-6 py-3.5">
-                      {app.status === 'INTERVIEW' ? (
-                        <span className="bg-[#DBEAFE] text-[#1E40AF] px-2 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-wider">
-                          INTERVIEWING
-                        </span>
-                      ) : app.status === 'SHORTLISTED' || app.status === 'SELECTED' || app.status === 'OFFERED' ? (
-                        <span className="bg-[#DCFCE7] text-[#166534] px-2 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-wider">
-                          SHORTLISTED
-                        </span>
-                      ) : (
-                        <span className="bg-[#F1F5F9] text-[#475569] px-2 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-wider">
-                          APPLIED
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-3.5">
-                      <button
-                        onClick={() => navigate('/student/applications')}
-                        className="text-[#4F46E5] font-bold hover:underline cursor-pointer"
-                      >
-                        View
-                      </button>
+                {activeApplications.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-slate-400 text-xs font-medium">
+                      No active applications submitted yet. Browse jobs to submit applications!
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  activeApplications.slice(0, 4).map((app) => (
+                    <tr key={app.id} className="hover:bg-[#F8FAFC] transition-colors">
+                      <td className="px-6 py-3.5 font-semibold text-[#0F172A]">{app.company}</td>
+                      <td className="px-6 py-3.5 text-[#64748B]">{app.jobTitle || (app as any).role}</td>
+                      <td className="px-6 py-3.5">
+                        <StatusBadge status={app.status} />
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <button
+                          onClick={() => navigate('/student/applications')}
+                          className="text-[#4F46E5] font-bold hover:underline cursor-pointer"
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -141,7 +124,7 @@ export const StudentDashboard: React.FC = () => {
             <div className="w-12 h-12 bg-[#F5F3FF] rounded-full flex items-center justify-center text-[#4F46E5] mb-4 shadow-xs">
               <Sparkles className="w-6 h-6 text-[#4F46E5]" />
             </div>
-            <p className="text-xs font-bold text-[#0F172A]">Python, DSA & System Architecture</p>
+            <p className="text-xs font-bold text-[#0F172A]">Python, DSA, SQL & System Architecture</p>
             <p className="text-[10px] text-[#64748B] mt-1">Available On-Demand • Evaluated by AI</p>
             <button
               onClick={() => navigate('/student/assessment')}
@@ -162,14 +145,14 @@ export const StudentDashboard: React.FC = () => {
           </div>
           <h4 className="text-white font-bold text-lg">Recommended Path: Full-Stack Distributed Systems Architect</h4>
           <p className="text-[#C7D2FE] text-xs mt-1 max-w-xl">
-            Based on your verified assessment scores in Python ({currentSkills['Python'] || 92}%) and DSA ({currentSkills['DSA'] || 88}%), your profile has high alignment with Cloud and SDE-1 placement drives.
+            Based on your verified skills and academic record, explore targeted career roadmaps matched with campus recruitment drives.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <span className="bg-[#4F46E5] text-white text-[10px] px-2.5 py-1 rounded font-bold uppercase tracking-wider">
               Target CTC: 18 - 26 LPA
             </span>
             <span className="bg-white/10 text-white text-[10px] px-2.5 py-1 rounded font-bold uppercase tracking-wider">
-              Match Score: {studentProfile?.careerReadiness || 90}%
+              Career Readiness: {studentProfile?.careerReadiness || 0}%
             </span>
           </div>
         </div>
@@ -230,7 +213,7 @@ export const StudentDashboard: React.FC = () => {
                     />
                   </div>
                   <p className="text-[10px] text-[#64748B] mt-2 font-medium">
-                    {score >= 85 ? 'Expert Tier' : score >= 75 ? 'Proficient' : 'Developing'}
+                    {score >= 85 ? 'Expert Tier' : score >= 75 ? 'Proficient' : score > 0 ? 'Developing' : 'Unassessed'}
                   </p>
                 </div>
               );
@@ -255,23 +238,29 @@ export const StudentDashboard: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              {displaySuggestions.slice(0, 2).map((job: any) => (
-                <div
-                  key={job.id}
-                  className="p-3.5 rounded-xl border border-[#E2E8F0] hover:border-[#4F46E5]/40 hover:bg-[#F8FAFC] transition-all group cursor-pointer"
-                  onClick={() => navigate('/student/jobs')}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#0F172A] group-hover:text-[#4F46E5] transition-colors">
-                      {job.role}
-                    </span>
-                    <span className="text-[10px] font-bold text-[#22C55E] bg-[#DCFCE7] px-2 py-0.5 rounded-full">
-                      {job.matchScore}% Match
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#64748B] mt-0.5">{job.company} • {job.salary}</p>
+              {aiJobSuggestions.length === 0 ? (
+                <div className="p-4 rounded-xl border border-dashed border-slate-200 text-center text-xs text-slate-400">
+                  No active job postings found yet.
                 </div>
-              ))}
+              ) : (
+                aiJobSuggestions.slice(0, 2).map((job: any) => (
+                  <div
+                    key={job.id}
+                    className="p-3.5 rounded-xl border border-[#E2E8F0] hover:border-[#4F46E5]/40 hover:bg-[#F8FAFC] transition-all group cursor-pointer"
+                    onClick={() => navigate('/student/jobs')}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#0F172A] group-hover:text-[#4F46E5] transition-colors">
+                        {job.role}
+                      </span>
+                      <span className="text-[10px] font-bold text-[#22C55E] bg-[#DCFCE7] px-2 py-0.5 rounded-full">
+                        {job.matchScore}% Match
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#64748B] mt-0.5">{job.company} • {job.salary}</p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

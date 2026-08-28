@@ -268,62 +268,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dbService.getRecycleBin(),
       ]);
 
-      // Merge companies
-      const companyMap = new Map<string, Company>();
-      INITIAL_COMPANIES.forEach((c) => { if (c && c.id) companyMap.set(c.id, c); });
-      (comps || []).forEach((c) => { if (c && c.id) companyMap.set(c.id, c); });
-      setCompanies(Array.from(companyMap.values()));
+      setCompanies(comps || []);
+      setHrAccounts(hrs || []);
+      setJobs(jbs || []);
+      setApplications(apps || []);
+      setInterviews(ints || []);
+      setPlacementDrives(drives || []);
+      setStudents(stus || []);
 
-      setHrAccounts(hrs);
-
-      // Merge jobs
-      const jobMap = new Map<string, Job>();
-      INITIAL_JOBS.forEach((j) => { if (j && j.id) jobMap.set(j.id, j); });
-      (jbs || []).forEach((j) => { if (j && j.id) jobMap.set(j.id, j); });
-      setJobs(Array.from(jobMap.values()));
-
-      // Merge applications
-      const appMap = new Map<string, JobApplication>();
-      INITIAL_APPLICATIONS.forEach((a) => { if (a && a.id) appMap.set(a.id, a); });
-      (apps || []).forEach((a) => { if (a && a.id) appMap.set(a.id, a); });
-      setApplications(Array.from(appMap.values()));
-
-      // Merge interviews
-      const intMap = new Map<string, Interview>();
-      INITIAL_INTERVIEWS.forEach((i) => { if (i && i.id) intMap.set(i.id, i); });
-      (ints || []).forEach((i) => { if (i && i.id) intMap.set(i.id, i); });
-      setInterviews(Array.from(intMap.values()));
-
-      // Merge placement drives
-      const driveMap = new Map<string, PlacementDrive>();
-      INITIAL_PLACEMENT_DRIVES.forEach((d) => { if (d && d.id) driveMap.set(d.id, d); });
-      (drives || []).forEach((d) => { if (d && d.id) driveMap.set(d.id, d); });
-      setPlacementDrives(Array.from(driveMap.values()));
-
-      // Merge verified default candidates and live registered students from Supabase
-      const studentMap = new Map<string, StudentProfile>();
-      INITIAL_STUDENTS_LIST.forEach((s) => {
-        if (s && s.id) {
-          studentMap.set(s.id, s);
-          if (s.email) studentMap.set(s.email.toLowerCase(), s);
-        }
-      });
-      (stus || []).forEach((s) => {
-        if (s && s.id) {
-          studentMap.set(s.id, s);
-          if (s.email) studentMap.set(s.email.toLowerCase(), s);
-        }
-      });
-      const mergedStudents = Array.from(new Set(studentMap.values()));
-      setStudents(mergedStudents);
-
-      setQuestionBank(qb);
-      setAssessmentsList(assts);
-      setStudentAssignments(asgns);
-      setStudentAssessmentResults(results);
-      setAssessmentRequests(reqs);
-      setRetestRequests(retests);
-      setRecycleBin(bin);
+      setQuestionBank(qb || []);
+      setAssessmentsList(assts || []);
+      setStudentAssignments(asgns || []);
+      setStudentAssessmentResults(results || []);
+      setAssessmentRequests(reqs || []);
+      setRetestRequests(retests || []);
+      setRecycleBin(bin || { companies: [], students: [], jobs: [], applications: [], interviews: [], placementDrives: [], assessments: [] });
     } catch (e) {
       console.warn('Error refreshing data from Supabase', e);
     } finally {
@@ -344,31 +303,31 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else if (user.name) {
         const initialProfile: StudentProfile = {
           id: user.id,
-          name: user.name || 'Student Candidate',
+          name: user.name || 'User',
           email: user.email,
-          phone: '+1 (555) 234-5678',
+          phone: '',
           avatar: user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
-          college: user.college || 'School of Engineering & Applied Sciences',
-          branch: user.branch || 'Computer Science',
-          graduationYear: user.graduationYear || 2026,
-          cgpa: user.cgpa || 8.8,
-          careerReadiness: 90,
-          overallSkillScore: 88,
-          headline: 'Full-Stack Developer & Distributed Systems Researcher',
-          bio: 'Passionate about high-throughput backend services and modern frontend state architectures.',
-          location: 'Bangalore / Seattle',
-          linkedin: 'https://linkedin.com/in/student',
-          github: 'https://github.com/student',
-          portfolio: 'https://student.dev',
+          college: user.college || '',
+          branch: user.branch || '',
+          graduationYear: user.graduationYear || new Date().getFullYear(),
+          cgpa: user.cgpa || 0,
+          careerReadiness: 0,
+          overallSkillScore: 0,
+          headline: '',
+          bio: '',
+          location: '',
+          linkedin: '',
+          github: '',
+          portfolio: '',
           resumeUrl: '',
-          resumeFileName: 'Student_Resume_2026.pdf',
-          skills: { Python: 92, DSA: 88, SQL: 85, React: 84, Java: 80, DBMS: 86 },
+          resumeFileName: '',
+          skills: {},
           projects: [],
           education: [],
           certifications: [],
           achievements: [],
-          atsScore: 92,
-          profileCompleteness: 85,
+          atsScore: 0,
+          profileCompleteness: 40,
           status: 'ACTIVE',
         };
         setStudentProfile(initialProfile);
