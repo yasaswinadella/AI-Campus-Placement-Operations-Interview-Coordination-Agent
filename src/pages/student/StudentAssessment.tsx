@@ -71,7 +71,7 @@ export const StudentAssessment: React.FC = () => {
     setSelectedSkill(skillName);
     setAnswers({});
     setCurrentQuestionIndex(0);
-    setTimeLeftSeconds(600);
+    setTimeLeftSeconds(3600);
     setInTestMode(true);
   };
 

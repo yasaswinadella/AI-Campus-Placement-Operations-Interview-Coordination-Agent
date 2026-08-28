@@ -21,12 +21,12 @@ export const StudentRetest: React.FC = () => {
   const [selectedSkill, setSelectedSkill] = useState(defaultSkill);
 
   const skillsList = [
-    { name: 'Python', currentScore: studentProfile.skills['Python'] || 94, attemptsLeft: 2, cooldown: 'Active Now' },
-    { name: 'DSA', currentScore: studentProfile.skills['DSA'] || 88, attemptsLeft: 3, cooldown: 'Active Now' },
-    { name: 'SQL', currentScore: studentProfile.skills['SQL'] || 82, attemptsLeft: 2, cooldown: 'Active Now' },
-    { name: 'React', currentScore: studentProfile.skills['React'] || 90, attemptsLeft: 3, cooldown: 'Active Now' },
-    { name: 'DBMS', currentScore: studentProfile.skills['DBMS'] || 78, attemptsLeft: 1, cooldown: 'Active Now' },
-    { name: 'Java', currentScore: studentProfile.skills['Java'] || 80, attemptsLeft: 2, cooldown: 'Active Now' },
+    { name: 'Python', currentScore: studentProfile?.skills?.['Python'] || 94, attemptsLeft: 2, cooldown: 'Active Now' },
+    { name: 'DSA', currentScore: studentProfile?.skills?.['DSA'] || 88, attemptsLeft: 3, cooldown: 'Active Now' },
+    { name: 'SQL', currentScore: studentProfile?.skills?.['SQL'] || 82, attemptsLeft: 2, cooldown: 'Active Now' },
+    { name: 'React', currentScore: studentProfile?.skills?.['React'] || 90, attemptsLeft: 3, cooldown: 'Active Now' },
+    { name: 'DBMS', currentScore: studentProfile?.skills?.['DBMS'] || 78, attemptsLeft: 1, cooldown: 'Active Now' },
+    { name: 'Java', currentScore: studentProfile?.skills?.['Java'] || 80, attemptsLeft: 2, cooldown: 'Active Now' },
   ];
 
   const currentSkillInfo = skillsList.find((s) => s.name === selectedSkill) || skillsList[0];

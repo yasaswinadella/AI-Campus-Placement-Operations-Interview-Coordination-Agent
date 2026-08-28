@@ -20,7 +20,7 @@ export const StudentProgress: React.FC = () => {
     { sem: 'Semester 5 (Fall 2024)', score: 68, readiness: 62, milestone: 'Fundamentals & Data Structures' },
     { sem: 'Semester 6 (Spring 2025)', score: 78, readiness: 74, milestone: 'Full Stack & Database Design' },
     { sem: 'Semester 7 (Fall 2025)', score: 86, readiness: 84, milestone: 'System Design & Distributed Cloud' },
-    { sem: 'Semester 8 (Current 2026)', score: studentProfile.overallSkillScore, readiness: studentProfile.careerReadiness, milestone: 'Campus Placement Season' },
+    { sem: 'Semester 8 (Current 2026)', score: studentProfile?.overallSkillScore || 88, readiness: studentProfile?.careerReadiness || 85, milestone: 'Campus Placement Season' },
   ];
 
   const milestones = [

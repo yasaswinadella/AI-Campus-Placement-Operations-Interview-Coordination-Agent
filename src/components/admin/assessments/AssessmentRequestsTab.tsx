@@ -45,11 +45,11 @@ export const AssessmentRequestsTab: React.FC = () => {
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const matchName = req.studentName.toLowerCase().includes(q);
-      const matchEmail = req.studentEmail.toLowerCase().includes(q);
-      const matchCollege = req.studentCollege.toLowerCase().includes(q);
-      const matchSkill = req.requestedSkill.toLowerCase().includes(q);
-      const matchReason = req.reason.toLowerCase().includes(q);
+      const matchName = (req.studentName || '').toLowerCase().includes(q);
+      const matchEmail = (req.studentEmail || '').toLowerCase().includes(q);
+      const matchCollege = (req.studentCollege || '').toLowerCase().includes(q);
+      const matchSkill = (req.requestedSkill || '').toLowerCase().includes(q);
+      const matchReason = (req.reason || '').toLowerCase().includes(q);
       if (!matchName && !matchEmail && !matchCollege && !matchSkill && !matchReason) {
         return false;
       }

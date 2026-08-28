@@ -14,8 +14,10 @@ import {
 } from 'lucide-react';
 
 export const StudentSkillGaps: React.FC = () => {
-  const { skillGaps } = useData();
+  const { skillGaps = [] } = useData();
   const navigate = useNavigate();
+
+  const safeGaps = skillGaps || [];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
@@ -43,16 +45,16 @@ export const StudentSkillGaps: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-xs">
           <p className="text-xs font-semibold uppercase text-[#64748B]">Identified Skill Gaps</p>
-          <h3 className="text-3xl font-extrabold text-[#EF4444] mt-2">{skillGaps.length} Areas</h3>
+          <h3 className="text-3xl font-extrabold text-[#EF4444] mt-2">{safeGaps.length} Areas</h3>
           <p className="text-xs text-[#64748B] mt-1">
-            {skillGaps.length === 0 ? 'All skills meet placement criteria' : 'Priority remediation requirements'}
+            {safeGaps.length === 0 ? 'All skills meet placement criteria' : 'Priority remediation requirements'}
           </p>
         </div>
 
         <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-xs">
           <p className="text-xs font-semibold uppercase text-[#64748B]">Estimated Prep Time</p>
           <h3 className="text-3xl font-extrabold text-[#0F172A] mt-2">
-            {skillGaps.reduce((sum, g) => sum + g.estimatedHours, 0)} Hours
+            {safeGaps.reduce((sum, g) => sum + (g.estimatedHours || 0), 0)} Hours
           </h3>
           <p className="text-xs text-emerald-600 font-medium mt-1">Self-paced coursework modules</p>
         </div>

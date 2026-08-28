@@ -15,6 +15,7 @@ import {
   Sparkles,
   ShieldAlert,
 } from 'lucide-react';
+import { get50QuestionsForSkill } from '../../../data/questionDatasets';
 
 interface TakeAssessmentModalProps {
   isOpen: boolean;
@@ -35,11 +36,14 @@ export const TakeAssessmentModal: React.FC<TakeAssessmentModalProps> = ({
   assessment,
   onSubmitAssessment,
 }) => {
-  const questions = assessment?.questions || [];
+  const fallback50 = get50QuestionsForSkill(assignment?.skill || 'React');
+  const questions = (assessment?.questions && assessment.questions.length > 0)
+    ? assessment.questions
+    : fallback50;
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<{ [qId: string]: any }>({});
   const [secondsRemaining, setSecondsRemaining] = useState(
-    (assignment.timeLimit || 30) * 60
+    (assignment?.timeLimit || 60) * 60
   );
   const [isConfirmSubmitOpen, setIsConfirmSubmitOpen] = useState(false);
   const [testOutput, setTestOutput] = useState<{ [qId: string]: string }>({});

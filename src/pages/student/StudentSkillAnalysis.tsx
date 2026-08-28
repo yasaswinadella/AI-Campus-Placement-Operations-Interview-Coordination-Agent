@@ -19,14 +19,14 @@ export const StudentSkillAnalysis: React.FC = () => {
   const navigate = useNavigate();
 
   const domainScores = [
-    { skill: 'Python', score: studentProfile.skills['Python'] || 94, batchAvg: 76, tier: 'Expert', weight: 'High' },
-    { skill: 'Data Structures & Algorithms', score: studentProfile.skills['DSA'] || 88, batchAvg: 68, tier: 'Proficient', weight: 'High' },
-    { skill: 'React & Web Architecture', score: studentProfile.skills['React'] || 90, batchAvg: 72, tier: 'Expert', weight: 'Medium' },
-    { skill: 'SQL & Query Optimization', score: studentProfile.skills['SQL'] || 82, batchAvg: 74, tier: 'Proficient', weight: 'Medium' },
-    { skill: 'Database Management (DBMS)', score: studentProfile.skills['DBMS'] || 78, batchAvg: 65, tier: 'Proficient', weight: 'Medium' },
-    { skill: 'Java & OOP Design', score: studentProfile.skills['Java'] || 80, batchAvg: 70, tier: 'Proficient', weight: 'Medium' },
-    { skill: 'Quantitative Aptitude', score: studentProfile.skills['Aptitude'] || 85, batchAvg: 75, tier: 'Proficient', weight: 'Low' },
-    { skill: 'Behavioral & Communication', score: studentProfile.skills['Communication'] || 90, batchAvg: 80, tier: 'Expert', weight: 'High' },
+    { skill: 'Python', score: studentProfile?.skills?.['Python'] || 94, batchAvg: 76, tier: 'Expert', weight: 'High' },
+    { skill: 'Data Structures & Algorithms', score: studentProfile?.skills?.['DSA'] || 88, batchAvg: 68, tier: 'Proficient', weight: 'High' },
+    { skill: 'React & Web Architecture', score: studentProfile?.skills?.['React'] || 90, batchAvg: 72, tier: 'Expert', weight: 'Medium' },
+    { skill: 'SQL & Query Optimization', score: studentProfile?.skills?.['SQL'] || 82, batchAvg: 74, tier: 'Proficient', weight: 'Medium' },
+    { skill: 'Database Management (DBMS)', score: studentProfile?.skills?.['DBMS'] || 78, batchAvg: 65, tier: 'Proficient', weight: 'Medium' },
+    { skill: 'Java & OOP Design', score: studentProfile?.skills?.['Java'] || 80, batchAvg: 70, tier: 'Proficient', weight: 'Medium' },
+    { skill: 'Quantitative Aptitude', score: studentProfile?.skills?.['Aptitude'] || 85, batchAvg: 75, tier: 'Proficient', weight: 'Low' },
+    { skill: 'Behavioral & Communication', score: studentProfile?.skills?.['Communication'] || 90, batchAvg: 80, tier: 'Expert', weight: 'High' },
   ];
 
   return (
