@@ -27,7 +27,60 @@ export const StudentProfileResume: React.FC = () => {
   const [portfolio, setPortfolio] = useState(studentProfile.portfolio);
   const [linkedin, setLinkedin] = useState(studentProfile.linkedin);
   const [github, setGithub] = useState(studentProfile.github);
-  const [resumeFileName, setResumeFileName] = useState(studentProfile.resumeFileName || 'John_Doe_Resume_2026.pdf');
+  const [targetIndustry, setTargetIndustry] = useState('Full Stack & Cloud Software Engineering');
+  const [isScanningAts, setIsScanningAts] = useState(false);
+  const [atsAnalysis, setAtsAnalysis] = useState<{
+    score: number;
+    verdict: string;
+    matchedKeywords: string[];
+    missingKeywords: string[];
+    improvements: string[];
+  }>({
+    score: studentProfile.atsScore || 88,
+    verdict: 'High ATS Compatibility • Top 8% Candidate Match',
+    matchedKeywords: ['React', 'TypeScript', 'Data Structures', 'REST APIs', 'SQL Optimization', 'Git Version Control'],
+    missingKeywords: ['CI/CD Pipelines', 'Docker Containerization', 'Unit Testing (Jest/Vitest)', 'GraphQL'],
+    improvements: [
+      'Quantify impact metrics in bullet points (e.g., "reduced API latency by 35%")',
+      'Include links to live deployed demo apps alongside repository links',
+      'Add industry certifications under verified technical credentials'
+    ],
+  });
+
+  const handleRunAiAtsScan = () => {
+    setIsScanningAts(true);
+    setTimeout(() => {
+      let calculatedScore = 75;
+      if (cgpa >= 8.5) calculatedScore += 8;
+      else if (cgpa >= 7.5) calculatedScore += 5;
+      if (bio.length > 50) calculatedScore += 6;
+      if (github) calculatedScore += 4;
+      if (linkedin) calculatedScore += 4;
+      if (portfolio) calculatedScore += 3;
+      calculatedScore = Math.min(98, calculatedScore);
+
+      const newAnalysis = {
+        score: calculatedScore,
+        verdict: calculatedScore >= 85 ? 'Excellent ATS Alignment (Top Tier)' : 'Good Baseline • Minor Keyword Gaps',
+        matchedKeywords: ['Algorithms', 'Object-Oriented Design', 'SQL', 'TypeScript', 'Modular Architecture'],
+        missingKeywords: targetIndustry.includes('Data')
+          ? ['Pandas DataFrames', 'NumPy Vectors', 'Model Deployment']
+          : ['Docker/K8s', 'Distributed Caching (Redis)', 'E2E Testing'],
+        improvements: [
+          'Add quantified metric results (e.g., "improved query performance by 40%")',
+          'Align project descriptions with Fortune 500 job requisition keywords',
+          'Highlight live portfolio projects demonstrating full lifecycle development'
+        ],
+      };
+
+      setAtsAnalysis(newAnalysis);
+      setIsScanningAts(false);
+      updateStudentProfile({ atsScore: calculatedScore });
+      showToast('AI ATS Scan Complete', `ATS Match Score evaluated at ${calculatedScore}/100.`);
+    }, 1000);
+  };
+
+  const [resumeFileName, setResumeFileName] = useState(studentProfile.resumeFileName || 'Student_Resume_2026.pdf');
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,8 +96,9 @@ export const StudentProfileResume: React.FC = () => {
       linkedin,
       github,
       resumeFileName,
+      atsScore: atsAnalysis.score,
     });
-    showToast('Profile Updated', 'Your student academic credentials and resume were updated.');
+    showToast('Profile Saved', 'Your student credentials and ATS resume analysis were saved.');
   };
 
   return (
@@ -52,63 +106,90 @@ export const StudentProfileResume: React.FC = () => {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">
-          Academic Profile & ATS Resume Studio
+          Academic Profile & AI ATS Resume Studio
         </h1>
         <p className="text-xs text-[#64748B] mt-1">
-          Keep your collegiate portfolio, verified transcript records, and ATS-optimized resume in sync.
+          Neural parsing, target keyword matching, and verified credential management for campus placement.
         </p>
       </div>
 
       {/* ATS Resume Analyzer Card */}
-      <div className="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-3xl p-8 text-white shadow-xl space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-emerald-300 text-xs font-bold border border-white/20">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-7 text-white shadow-xl space-y-6 border border-indigo-500/20">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold border border-indigo-400/30">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>ATS Neural Scanner: Excellent Score</span>
+              <span>AI ATS Neural Scanner</span>
             </div>
-            <h2 className="text-2xl font-extrabold text-white">Resume ATS Compatibility: 92 / 100</h2>
-            <p className="text-xs text-slate-300 max-w-lg leading-relaxed">
-              Your resume exhibits high keyword density for Python, Distributed Systems, SQL, and React with quantified bullet impacts.
+            <h2 className="text-2xl font-extrabold text-white">
+              Resume ATS Match: {atsAnalysis.score} / 100
+            </h2>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {atsAnalysis.verdict}
             </p>
           </div>
 
-          <div className="flex items-center gap-4 bg-white/10 p-4 rounded-2xl border border-white/20 backdrop-blur-md">
-            <FileText className="w-10 h-10 text-indigo-300" />
-            <div>
-              <p className="text-xs font-bold text-white">{resumeFileName}</p>
-              <p className="text-[11px] text-slate-300">Verified PDF • 248 KB</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={isScanningAts}
+              onClick={handleRunAiAtsScan}
+              className="px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-500/30 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>{isScanningAts ? 'Scanning Resume...' : '⚡ Run AI Deep Scan'}</span>
+            </button>
+
+            <div className="flex items-center gap-3 bg-white/10 p-2.5 rounded-2xl border border-white/15 backdrop-blur-md">
+              <FileText className="w-8 h-8 text-indigo-300" />
+              <div>
+                <p className="text-xs font-bold text-white max-w-[140px] truncate">{resumeFileName}</p>
+                <p className="text-[10px] text-slate-300">Verified PDF</p>
+              </div>
+              <label className="cursor-pointer px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-xl text-[11px] font-bold text-white transition-all">
+                <input
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) {
+                      setResumeFileName(e.target.files[0].name);
+                      showToast('Resume Attached', `Uploaded ${e.target.files[0].name}`);
+                    }
+                  }}
+                />
+                Upload PDF
+              </label>
             </div>
-            <label className="cursor-pointer px-4 py-2 bg-[#4F46E5] hover:bg-indigo-600 rounded-xl text-xs font-bold text-white transition-all shadow-md">
-              <input
-                type="file"
-                accept=".pdf"
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files?.[0]) {
-                    setResumeFileName(e.target.files[0].name);
-                    showToast('Resume Replaced', `Uploaded ${e.target.files[0].name}`);
-                  }
-                }}
-              />
-              Upload New PDF
-            </label>
           </div>
         </div>
 
-        {/* ATS Checklist */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-white/10 text-xs">
-          <div className="flex items-center gap-2 text-slate-200">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>Keyword Density: 96%</span>
+        {/* ATS Keyword Breakdown */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-white/10 text-xs">
+          <div className="space-y-1.5 bg-white/5 p-3.5 rounded-2xl border border-white/10">
+            <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block">
+              ✓ Verified Keywords Detected in Profile
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {atsAnalysis.matchedKeywords.map((kw) => (
+                <span key={kw} className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[11px] font-medium border border-emerald-500/30">
+                  {kw}
+                </span>
+              ))}
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-slate-200">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>Action Verbs & Impact Metrics</span>
-          </div>
-          <div className="flex items-center gap-2 text-slate-200">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>Clean Single-Column Parsing</span>
+
+          <div className="space-y-1.5 bg-white/5 p-3.5 rounded-2xl border border-white/10">
+            <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider block">
+              ⚠️ Recommended Keywords to Add
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {atsAnalysis.missingKeywords.map((kw) => (
+                <span key={kw} className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[11px] font-medium border border-amber-500/30">
+                  + {kw}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>
