@@ -839,40 +839,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 2. Create user in Supabase Auth if configured
       let userId = `HR-${Date.now()}`;
       if (isSupabaseConfigured && supabase) {
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: emailKey,
-          password: data.password,
-          options: {
-            data: {
-              name: hrName,
-              role: 'hr',
-              companyId: cleanCompId,
-              companyName: companyName,
-              hrId: cleanHrId,
+        try {
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: emailKey,
+            password: data.password,
+            options: {
+              data: {
+                name: hrName,
+                role: 'hr',
+                companyId: cleanCompId,
+                companyName: companyName,
+                hrId: cleanHrId,
+              },
             },
-          },
-        });
+          });
 
-        if (authData?.user) {
-          userId = authData.user.id;
+          if (authData?.user) {
+            userId = authData.user.id;
+          } else if (authError) {
+            const { data: signInData } = await supabase.auth.signInWithPassword({
+              email: emailKey,
+              password: data.password,
+            });
+            if (signInData?.user) {
+              userId = signInData.user.id;
+            }
+          }
+        } catch (authEx) {
+          console.warn('Supabase auth attempt notice:', authEx);
         }
 
         // 3. Create profile in Supabase 'profiles' table with 'approved' status
-        const profilePayload = {
-          id: userId,
-          email: emailKey,
-          name: hrName,
-          role: 'hr',
-          company_id: cleanCompId,
-          company_name: companyName,
-          hr_id: cleanHrId,
-          status: 'ACTIVE',
-          approval_status: 'approved',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
+        try {
+          const profilePayload = {
+            id: userId,
+            email: emailKey,
+            name: hrName,
+            role: 'hr',
+            company_id: cleanCompId,
+            company_name: companyName,
+            hr_id: cleanHrId,
+            status: 'ACTIVE',
+            approval_status: 'approved',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
 
-        await supabase.from('profiles').upsert(profilePayload);
+          await supabase.from('profiles').upsert(profilePayload);
+        } catch (profEx) {
+          console.warn('Supabase profile upsert notice:', profEx);
+        }
       }
 
       // 4. Create entry in 'hr_accounts'
