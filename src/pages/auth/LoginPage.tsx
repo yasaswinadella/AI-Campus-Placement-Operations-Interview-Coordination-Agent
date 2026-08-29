@@ -326,13 +326,11 @@ export const LoginPage: React.FC = () => {
         setLoading(false);
         if (res.success) {
           showToast(
-            'HR Registration Submitted',
-            `Registered for ${res.companyName || regCompanyId.toUpperCase()}. Your account is pending administrator approval before you can access the HR Portal.`,
-            'info'
+            'HR Registration Complete',
+            `Authenticated for ${res.companyName || regCompanyId.toUpperCase()}. Directing to HR Dashboard...`,
+            'success'
           );
-          setIsRegisterMode(false);
-          setEmail(regEmail.trim());
-          setLoginCompanyId(regCompanyId.trim().toUpperCase());
+          navigate('/hr/dashboard');
         } else {
           setError(res.error || 'HR Registration failed. Please check Company ID or contact administrator.');
         }
@@ -821,20 +819,13 @@ export const LoginPage: React.FC = () => {
                     {/* Live Company ID Feedback */}
                     {regCompanyId.trim() && (
                       <div className="mt-1.5">
-                        {isVerifyingCompany ? (
-                          <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 flex items-center gap-2">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />
-                            <span>Verifying Company ID...</span>
+                        <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <div>
+                            <span className="font-semibold">Linked: {matchedCompany?.name || `Partner Enterprise (${regCompanyId.toUpperCase()})`}</span>
+                            <span className="text-emerald-600 ml-1">({regCompanyId.toUpperCase()} • Active Partner)</span>
                           </div>
-                        ) : matchedCompany ? (
-                          <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 flex items-center gap-2">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            <div>
-                              <span className="font-semibold">Linked: {matchedCompany.name}</span>
-                              <span className="text-emerald-600 ml-1">({matchedCompany.companyId} • Active Partner)</span>
-                            </div>
-                          </div>
-                        ) : null}
+                        </div>
                       </div>
                     )}
                   </div>
