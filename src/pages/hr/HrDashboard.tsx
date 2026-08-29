@@ -168,8 +168,8 @@ export const HrDashboard: React.FC = () => {
                   <div className="flex items-center gap-2 self-end sm:self-auto">
                     <StatusBadge status={app.status} size="sm" />
                     <button
-                      onClick={() => navigate('/hr/applicant-detail', { state: { applicationId: app.id } })}
-                      className="px-3 py-1.5 bg-[#4F46E5] hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+                      onClick={() => navigate('/hr/applicants', { state: { applicationId: app.id } })}
+                      className="px-3 py-1.5 bg-[#4F46E5] hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                     >
                       Review Profile
                     </button>

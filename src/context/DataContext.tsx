@@ -95,23 +95,6 @@ export const SAMPLE_PLACEMENT_DRIVES: PlacementDrive[] = [
     registeredStudentIds: ['STU-001'],
     selectedStudentIds: [],
   },
-  {
-    id: 'DRV-002',
-    company: 'Microsoft',
-    companyLogo: 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=120',
-    role: 'Machine Learning & AI Platform Engineer',
-    salaryPackage: '28 - 38 LPA',
-    minCgpa: 7.8,
-    eligibleBranches: ['Computer Science', 'Data Science', 'Electronics & Comm.'],
-    maxBacklogs: 0,
-    minAssessmentScore: 70,
-    driveDate: new Date(Date.now() + 8 * 86400000).toISOString().split('T')[0],
-    registrationDeadline: new Date(Date.now() + 6 * 86400000).toISOString().split('T')[0],
-    status: 'UPCOMING',
-    description: 'Campus hiring drive for foundational LLM fine-tuning, Azure cloud services, and real-time distributed inferencing.',
-    registeredStudentIds: [],
-    selectedStudentIds: [],
-  },
 ];
 
 export const REALISTIC_SAMPLE_INTERVIEWS: Interview[] = [

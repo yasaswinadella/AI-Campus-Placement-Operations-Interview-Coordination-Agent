@@ -13,6 +13,7 @@ import {
   Mail,
   GraduationCap,
   ArrowRight,
+  Trash2,
 } from 'lucide-react';
 
 export const HrShortlistedPool: React.FC = () => {
@@ -24,9 +25,25 @@ export const HrShortlistedPool: React.FC = () => {
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [selectedStudentForSchedule, setSelectedStudentForSchedule] = useState<any>(null);
 
+  const [deletedIds, setDeletedIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('cf_deleted_shortlisted_students') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const handleDeleteCandidate = (studentId: string, studentName: string) => {
+    const updated = [...deletedIds, studentId];
+    setDeletedIds(updated);
+    localStorage.setItem('cf_deleted_shortlisted_students', JSON.stringify(updated));
+    showToast('Candidate Removed', `${studentName} was removed from the shortlisted pool.`, 'info');
+  };
+
   // Shortlisted students with CGPA >= minCgpaFilter
   const shortlistedTalent = students.filter(
     (s) =>
+      !deletedIds.includes(s.id) &&
       s.cgpa >= minCgpaFilter &&
       (s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         s.branch.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -157,10 +174,17 @@ export const HrShortlistedPool: React.FC = () => {
                   setSelectedStudentForSchedule(candidate);
                   setIsScheduleOpen(true);
                 }}
-                className="w-full py-2 bg-[#4F46E5] hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                className="flex-1 py-2 bg-[#4F46E5] hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Calendar className="w-3.5 h-3.5" />
                 <span>Schedule Interview</span>
+              </button>
+              <button
+                onClick={() => handleDeleteCandidate(candidate.id, candidate.name)}
+                title="Delete candidate from shortlist"
+                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl transition-all cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           </div>

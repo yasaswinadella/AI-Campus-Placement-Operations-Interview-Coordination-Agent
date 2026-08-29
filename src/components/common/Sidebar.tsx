@@ -61,26 +61,24 @@ export const Sidebar: React.FC = () => {
     { label: 'Dashboard', path: '/hr/dashboard', icon: LayoutDashboard },
     { label: 'Post Job', path: '/hr/post-job', icon: FileSpreadsheet },
     { label: 'Manage Postings', path: '/hr/manage-jobs', icon: Briefcase },
-    { label: 'Applicants Pool', path: '/hr/applicants', icon: Users },
-    { label: 'Placement Drives', path: '/hr/placement-drives', icon: Megaphone },
+    { label: 'Applicants Pool & Dossier', path: '/hr/applicants', icon: Users },
+    { label: 'Placement Drive', path: '/hr/placement-drives', icon: Megaphone },
     { label: 'Shortlisted Talent', path: '/hr/shortlisted-pool', icon: Filter },
     { label: 'Interview Suite', path: '/hr/interview-management', icon: Calendar },
   ];
 
   const hrQuickLinks = [
-    { label: 'Candidate Dossier', path: '/hr/applicant-detail', icon: UserSearch },
     { label: 'Schedule Interview', path: '/hr/schedule-interview', icon: Calendar },
-    { label: 'Placement Drives', path: '/hr/placement-drives', icon: Megaphone },
-    { label: 'Hiring & Offers', path: '/hr/hiring', icon: Award },
+    { label: 'Placement Drive', path: '/hr/placement-drives', icon: Megaphone },
+    { label: 'Interview Suite', path: '/hr/interview-management', icon: Calendar },
   ];
 
   const adminPrimaryNav = [
     { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
     { label: 'Student Directory', path: '/admin/students', icon: GraduationCap },
     { label: 'Partner Companies', path: '/admin/companies', icon: Building2 },
-    { label: 'Placement Drives', path: '/admin/placement-drives', icon: Megaphone },
+    { label: 'Placement Drive', path: '/admin/placement-drives', icon: Megaphone },
     { label: 'Campus Interviews', path: '/admin/interviews', icon: Calendar },
-    { label: 'Offers Ledger', path: '/admin/offers', icon: Award },
   ];
 
   const adminQuickLinks = [
