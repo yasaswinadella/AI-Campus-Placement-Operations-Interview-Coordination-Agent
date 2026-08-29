@@ -391,18 +391,23 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setHrAccounts(hrs || []);
       setJobs(jbs && jbs.length > 0 ? jbs : KAGGLE_CAMPUS_JOBS_DATASET);
+
       let mergedApps: JobApplication[] = [...(apps || [])];
+      let withdrawnIds: string[] = [];
       try {
+        const storedWithdrawn = localStorage.getItem('cf_withdrawn_app_ids');
+        if (storedWithdrawn) withdrawnIds = JSON.parse(storedWithdrawn);
         const stored = localStorage.getItem('cf_applications_all');
         if (stored) {
           const parsed = JSON.parse(stored);
           parsed.forEach((pa: JobApplication) => {
-            if (!mergedApps.some((a) => a.id === pa.id || (a.jobId === pa.jobId && a.studentEmail === pa.studentEmail))) {
+            if (!withdrawnIds.includes(pa.id) && !mergedApps.some((a) => a.id === pa.id)) {
               mergedApps.unshift(pa);
             }
           });
         }
       } catch {}
+      mergedApps = mergedApps.filter((a) => !withdrawnIds.includes(a.id));
       setApplications(mergedApps);
       setInterviews(ints && ints.length > 0 ? ints : REALISTIC_SAMPLE_INTERVIEWS);
       setPlacementDrives(drives && drives.length > 0 ? drives : SAMPLE_PLACEMENT_DRIVES);
@@ -724,8 +729,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const studentId = user?.id || studentProfile.id;
-      if (applications.some((a) => a.jobId === jobId && a.studentId === studentId)) {
-        showToast('Already Applied', 'You have already submitted an application for this position.', 'info');
+      const userEmail = (user?.email || studentProfile.email || '').toLowerCase();
+
+      // Check if student has an existing active submission for this job
+      const alreadyApplied = applications.some(
+        (a) => a.jobId === jobId && (a.studentId === studentId || (a.studentEmail && a.studentEmail.toLowerCase() === userEmail))
+      );
+      if (alreadyApplied) {
+        showToast('Already Applied', 'You have already submitted an active application for this position.', 'info');
         return false;
       }
 
@@ -764,8 +775,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...newApp,
         id: `APP-${Date.now()}`,
       };
+
       setApplications((prev) => [optimisticApp, ...prev.filter((a) => a.id !== optimisticApp.id)]);
 
+      // Save to localStorage & clear withdrawn list
       try {
         const stored = localStorage.getItem('cf_applications_all');
         const list = stored ? JSON.parse(stored) : [];
@@ -813,12 +826,30 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const withdrawApplication = useCallback(
     (appId: string) => {
+      // 1. Remove from in-memory state
       setApplications((prev) => prev.filter((a) => a.id !== appId));
+
+      // 2. Remove from local storage cache & track withdrawn ID
+      try {
+        const stored = localStorage.getItem('cf_applications_all');
+        if (stored) {
+          const list = JSON.parse(stored);
+          const filtered = list.filter((a: any) => a.id !== appId);
+          localStorage.setItem('cf_applications_all', JSON.stringify(filtered));
+        }
+        const storedWithdrawn = localStorage.getItem('cf_withdrawn_app_ids');
+        const withdrawnList: string[] = storedWithdrawn ? JSON.parse(storedWithdrawn) : [];
+        if (!withdrawnList.includes(appId)) {
+          withdrawnList.push(appId);
+          localStorage.setItem('cf_withdrawn_app_ids', JSON.stringify(withdrawnList));
+        }
+      } catch {}
+
+      // 3. Mark deleted in Supabase
       dbService.deleteApplication(appId, user?.name || 'Student');
-      showToast('Application Withdrawn', 'Your application was withdrawn.', 'info');
-      refreshData();
+      showToast('Application Withdrawn', 'Your application was withdrawn and removed.', 'info');
     },
-    [user, showToast, refreshData]
+    [user, showToast]
   );
 
   // ============================================================================

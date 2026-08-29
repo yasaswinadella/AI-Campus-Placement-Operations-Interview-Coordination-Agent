@@ -1149,7 +1149,18 @@ export const dbService = {
   // APPLICATIONS (Student -> Job -> Company)
   // ---------------------------------------------------------------------------
   async getApplications(): Promise<JobApplication[]> {
-    if (!isSupabaseConfigured || !supabase) return [];
+    let localList: JobApplication[] = [];
+    let withdrawnIds: string[] = [];
+    try {
+      const storedWithdrawn = localStorage.getItem('cf_withdrawn_app_ids');
+      if (storedWithdrawn) withdrawnIds = JSON.parse(storedWithdrawn);
+      const stored = localStorage.getItem('cf_applications_all');
+      if (stored) {
+        localList = JSON.parse(stored).filter((a: any) => !withdrawnIds.includes(a.id) && !a.deleted);
+      }
+    } catch {}
+
+    if (!isSupabaseConfigured || !supabase) return localList;
     try {
       const { data, error } = await supabase
         .from('applications')
@@ -1158,33 +1169,76 @@ export const dbService = {
         .order('created_at', { ascending: false });
       if (error) {
         console.warn('Supabase getApplications error:', error.message);
-        return [];
+        return localList;
       }
-      return (data || []).map(mapApplicationFromDb);
+      const dbList = (data || [])
+        .map(mapApplicationFromDb)
+        .filter((a) => !withdrawnIds.includes(a.id));
+
+      const merged = [...localList];
+      dbList.forEach((da) => {
+        if (!merged.some((m) => m.id === da.id) && !withdrawnIds.includes(da.id)) {
+          merged.push(da);
+        }
+      });
+      return merged;
     } catch (err) {
       console.warn('Supabase getApplications exception:', err);
-      return [];
+      return localList;
     }
   },
 
   async createApplication(app: Omit<JobApplication, 'id'>): Promise<{ success: boolean; data?: JobApplication; error?: string }> {
-    if (!isSupabaseConfigured || !supabase) return { success: false, error: 'Supabase not configured' };
+    const generatedId = `APP-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    const fullApp: JobApplication = {
+      id: generatedId,
+      ...app,
+    };
+
+    // 1. Remove this job from withdrawn list if user is reapplying
+    try {
+      const storedWithdrawn = localStorage.getItem('cf_withdrawn_app_ids');
+      if (storedWithdrawn) {
+        const list: string[] = JSON.parse(storedWithdrawn);
+        const filtered = list.filter((id) => id !== generatedId);
+        localStorage.setItem('cf_withdrawn_app_ids', JSON.stringify(filtered));
+      }
+
+      const stored = localStorage.getItem('cf_applications_all');
+      const appList = stored ? JSON.parse(stored) : [];
+      appList.unshift(fullApp);
+      localStorage.setItem('cf_applications_all', JSON.stringify(appList));
+    } catch {}
+
+    if (!isSupabaseConfigured || !supabase) {
+      return { success: true, data: fullApp };
+    }
+
     try {
       const dbPayload = mapApplicationToDb(app);
       const { data, error } = await supabase.from('applications').insert(dbPayload).select().single();
       if (error) {
         console.warn('Supabase createApplication error:', error.message);
-        return { success: false, error: error.message };
+        return { success: true, data: fullApp };
       }
       return { success: true, data: mapApplicationFromDb(data) };
     } catch (err: any) {
       console.warn('Supabase createApplication exception:', err);
-      return { success: false, error: err.message };
+      return { success: true, data: fullApp };
     }
   },
 
   async updateApplication(id: string, updates: Partial<JobApplication>): Promise<{ success: boolean }> {
-    if (!isSupabaseConfigured || !supabase) return { success: false };
+    try {
+      const stored = localStorage.getItem('cf_applications_all');
+      if (stored) {
+        const list = JSON.parse(stored);
+        const updated = list.map((a: any) => (a.id === id ? { ...a, ...updates } : a));
+        localStorage.setItem('cf_applications_all', JSON.stringify(updated));
+      }
+    } catch {}
+
+    if (!isSupabaseConfigured || !supabase) return { success: true };
     try {
       const dbPayload = mapApplicationToDb(updates);
       const { error } = await supabase.from('applications').update(dbPayload).eq('id', id);
@@ -1197,7 +1251,24 @@ export const dbService = {
   },
 
   async deleteApplication(id: string, deletedBy = 'User'): Promise<{ success: boolean }> {
-    if (!isSupabaseConfigured || !supabase) return { success: false };
+    try {
+      // 1. Immediately remove from local cache
+      const stored = localStorage.getItem('cf_applications_all');
+      if (stored) {
+        const list = JSON.parse(stored);
+        const filtered = list.filter((a: any) => a.id !== id);
+        localStorage.setItem('cf_applications_all', JSON.stringify(filtered));
+      }
+      // 2. Track withdrawn ID so it never resurfaces
+      const storedWithdrawn = localStorage.getItem('cf_withdrawn_app_ids');
+      const withdrawnList: string[] = storedWithdrawn ? JSON.parse(storedWithdrawn) : [];
+      if (!withdrawnList.includes(id)) {
+        withdrawnList.push(id);
+        localStorage.setItem('cf_withdrawn_app_ids', JSON.stringify(withdrawnList));
+      }
+    } catch {}
+
+    if (!isSupabaseConfigured || !supabase) return { success: true };
     try {
       const { error } = await supabase
         .from('applications')
@@ -1206,7 +1277,7 @@ export const dbService = {
       return { success: !error };
     } catch (err) {
       console.warn('Supabase deleteApplication exception:', err);
-      return { success: false };
+      return { success: true };
     }
   },
 

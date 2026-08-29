@@ -30,13 +30,13 @@ export const StudentApplications: React.FC = () => {
   const sId = studentProfile?.id || user?.id || '';
   const sEmail = (studentProfile?.email || user?.email || '').toLowerCase();
 
-  // Robust matching so student always sees all their applied applications
+  // Student's active non-withdrawn applications
   const myApplications = applications.filter((a) => {
     if (!a) return false;
     if (sId && a.studentId === sId) return true;
     if (sEmail && (a.studentEmail || '').toLowerCase() === sEmail) return true;
     if (!a.studentId || a.studentId === 'STUDENT-ACTIVE' || a.studentId === 'STU-001') return true;
-    return true; // Show active session applications
+    return false;
   });
 
   const filteredApplications = myApplications.filter((a) => {
@@ -147,8 +147,12 @@ export const StudentApplications: React.FC = () => {
                   <div className="flex items-center gap-2">
                     {app.status === 'APPLIED' && (
                       <button
-                        onClick={() => withdrawApplication(app.id)}
-                        className="px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        onClick={() => {
+                          if (window.confirm(`Are you sure you want to withdraw your application for "${app.jobTitle}" at ${app.company}? You can re-apply anytime from the Job Directory.`)) {
+                            withdrawApplication(app.id);
+                          }
+                        }}
+                        className="px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-colors cursor-pointer"
                       >
                         Withdraw Application
                       </button>
