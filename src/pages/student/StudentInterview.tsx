@@ -20,7 +20,13 @@ export const StudentInterview: React.FC = () => {
   const navigate = useNavigate();
 
   const sId = studentProfile?.id || '';
-  const myInterviews = interviews.length > 0 ? interviews : [];
+  const sEmail = (studentProfile?.email || '').toLowerCase();
+  const myInterviews = interviews.filter((i) => {
+    if (!i) return false;
+    if (sId && i.studentId === sId) return true;
+    if (sEmail && (i as any).studentEmail && (i as any).studentEmail.toLowerCase() === sEmail) return true;
+    return false;
+  });
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">

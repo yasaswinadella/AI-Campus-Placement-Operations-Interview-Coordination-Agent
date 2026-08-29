@@ -348,7 +348,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch {}
       setApplications(mergedApps);
-      setInterviews(ints && ints.length > 0 ? ints : REALISTIC_SAMPLE_INTERVIEWS);
+      setInterviews(ints || []);
       setPlacementDrives(drives || []);
       setStudents(stus || []);
 
