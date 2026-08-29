@@ -489,3 +489,49 @@ export interface HrInvitation {
   status: 'PENDING' | 'USED' | 'EXPIRED';
   createdAt: string;
 }
+
+export interface SelfAssessmentAttempt {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  skill: string;
+  status: 'IN_PROGRESS' | 'ROUND1_COMPLETED' | 'SUBMITTED' | 'EXPIRED';
+  startedAt: string;
+  expiresAt: string;
+  submittedAt?: string;
+  round1CompletedAt?: string;
+  round2StartedAt?: string;
+  round1Score?: number;
+  round1Total?: number;
+  round2Count?: number;
+  round2Status?: 'PENDING_EVALUATION' | 'EVALUATED' | 'COMPLETED';
+  score?: number;
+  percentage?: number;
+  result?: string;
+  mcqQuestionIds: string[];
+  codingQuestionIds: string[];
+  violationsCount?: number;
+}
+
+export interface AssessmentAnswerRecord {
+  id?: string;
+  attemptId: string;
+  questionId: string;
+  studentId: string;
+  answer: string;
+  isCorrect?: boolean;
+  marksAwarded?: number;
+  answeredAt?: string;
+  updatedAt?: string;
+}
+
+export interface AssessmentViolationRecord {
+  id?: string;
+  attemptId: string;
+  studentId: string;
+  violationType: string;
+  occurredAt: string;
+  metadata?: any;
+}
+

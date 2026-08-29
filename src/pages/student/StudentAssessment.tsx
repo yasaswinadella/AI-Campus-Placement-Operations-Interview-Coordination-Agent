@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
+import { dbService } from '../../services/db';
 import {
   FileCheck2,
   Clock,
@@ -14,78 +16,398 @@ import {
   BookOpen,
   Award,
   HelpCircle,
+  Code2,
+  FileText,
+  Lock,
+  Maximize2,
+  AlertOctagon,
+  ArrowRight,
+  History,
+  CheckCircle,
+  Eye,
 } from 'lucide-react';
+import { BankQuestion, SelfAssessmentAttempt, StudentAssessmentResult } from '../../types';
 
-import { get50QuestionsForSkill } from '../../data/questionDatasets';
+interface SkillOption {
+  skill: string;
+  icon: any;
+  desc: string;
+}
+
+const AVAILABLE_SKILLS: SkillOption[] = [
+  { skill: 'Python', icon: BookOpen, desc: 'Object-oriented programming, data structures, asyncio, and core library functions.' },
+  { skill: 'Java', icon: ShieldCheck, desc: 'JVM architecture, multithreading, collections, streams, and enterprise patterns.' },
+  { skill: 'SQL', icon: FileCheck2, desc: 'Relational query design, indexing, joins, window functions, and normalization.' },
+  { skill: 'JavaScript', icon: Sparkles, desc: 'Event loop, closures, promises, async/await, and ES6+ modern features.' },
+  { skill: 'React', icon: Award, desc: 'Component lifecycles, hooks, state management, reconciliation, and optimization.' },
+  { skill: 'Data Structures', icon: Code2, desc: 'Trees, graphs, dynamic programming, sorting, and algorithmic complexity.' },
+  { skill: 'DBMS', icon: RotateCcw, desc: 'ACID properties, transaction isolation, concurrency control, and storage engines.' },
+  { skill: 'Machine Learning', icon: Sparkles, desc: 'Supervised learning, neural networks, feature engineering, and evaluation metrics.' },
+];
 
 export const StudentAssessment: React.FC = () => {
-  const { studentProfile, submitAssessmentTest, questionBank, assessmentsList, studentAssignments } = useData();
+  const { studentProfile, refreshData, showToast } = useData();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [selectedSkill, setSelectedSkill] = useState('Python');
-  const [inTestMode, setInTestMode] = useState(false);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<{ [qId: string]: number }>({});
-  const [timeLeftSeconds, setTimeLeftSeconds] = useState(3600); // 60 minutes for 50 questions
+  // Navigation State: 'SKILL_LIST' | 'SKILL_INTRO' | 'ACTIVE_EXAM' | 'FINAL_RESULT'
+  const [viewMode, setViewMode] = useState<'SKILL_LIST' | 'SKILL_INTRO' | 'ACTIVE_EXAM' | 'FINAL_RESULT'>('SKILL_LIST');
+  const [selectedSkill, setSelectedSkill] = useState<string>('Python');
+  const [loading, setLoading] = useState<boolean>(false);
 
-  // Find questions from Supabase Question Bank or 50-Question benchmark dataset
-  const bankMatches = questionBank.filter(
-    (q) => q.type === 'MCQ' && (q.skill.toLowerCase().includes(selectedSkill.toLowerCase()) || selectedSkill === 'General')
-  );
+  // Active Attempt & Question Bank
+  const [activeAttempt, setActiveAttempt] = useState<SelfAssessmentAttempt | null>(null);
+  const [round, setRound] = useState<1 | 2>(1);
+  const [round1Questions, setRound1Questions] = useState<BankQuestion[]>([]);
+  const [round2Questions, setRound2Questions] = useState<BankQuestion[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
 
-  const fallback50 = get50QuestionsForSkill(selectedSkill);
-  const selectedSource = bankMatches.length >= 20 ? bankMatches : fallback50;
+  // Answers State: { [questionId]: answerValue }
+  const [answers, setAnswers] = useState<{ [qId: string]: any }>({});
+  const [round1Submitted, setRound1Submitted] = useState<boolean>(false);
+  const [round1Score, setRound1Score] = useState<number>(0);
+  const [showRound1Modal, setShowRound1Modal] = useState<boolean>(false);
 
-  const questions = selectedSource.map((q) => ({
-    id: q.id,
-    skill: q.skill,
-    question: q.question || 'Evaluate the optimal implementation for this scenario:',
-    options: [q.optionA || 'Option A', q.optionB || 'Option B', q.optionC || 'Option C', q.optionD || 'Option D'],
-    correctAnswer:
-      q.correctAnswer === 'A' || q.correctAnswer === 0
-        ? 0
-        : q.correctAnswer === 'B' || q.correctAnswer === 1
-        ? 1
-        : q.correctAnswer === 'C' || q.correctAnswer === 2
-        ? 2
-        : 3,
-    explanation: q.explanation || 'Verified algorithmic correctness.',
-  }));
+  // 45-Minute Timer State
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(45 * 60);
 
-  const currentQ = questions[currentQuestionIndex] || questions[0];
+  // Anti-Cheating & Security Violation State
+  const [violationsCount, setViolationsCount] = useState<number>(0);
+  const [showViolationModal, setShowViolationModal] = useState<boolean>(false);
+  const [violationMessage, setViolationMessage] = useState<string>('');
 
-  // Timer countdown
+  // Assessment History & Final Result
+  const [assessmentHistory, setAssessmentHistory] = useState<StudentAssessmentResult[]>([]);
+  const [finalResult, setFinalResult] = useState<StudentAssessmentResult | null>(null);
+  const [reviewModalOpen, setReviewModalOpen] = useState<boolean>(false);
+
+  const examContainerRef = useRef<HTMLDivElement>(null);
+  const autosaveTimeoutRef = useRef<any>(null);
+
+  const studentId = studentProfile?.id || user?.id || 'STUDENT-ACTIVE';
+  const studentName = studentProfile?.name || user?.name || 'Student Candidate';
+  const studentEmail = studentProfile?.email || user?.email || 'student@careerflow.ai';
+
+  // Load history on mount
   useEffect(() => {
-    let interval: any = null;
-    if (inTestMode && timeLeftSeconds > 0) {
-      interval = setInterval(() => {
-        setTimeLeftSeconds((prev) => prev - 1);
+    loadAssessmentHistory();
+  }, [studentId]);
+
+  const loadAssessmentHistory = async () => {
+    try {
+      const history = await dbService.getStudentSelfAssessmentHistory(studentId);
+      setAssessmentHistory(history);
+    } catch (err) {
+      console.warn('Failed to load assessment history:', err);
+    }
+  };
+
+  // 45-Minute Timer Countdown Effect
+  useEffect(() => {
+    let timer: any = null;
+    if (viewMode === 'ACTIVE_EXAM' && activeAttempt) {
+      timer = setInterval(() => {
+        const expiresAt = new Date(activeAttempt.expiresAt).getTime();
+        const now = Date.now();
+        const diffSeconds = Math.max(0, Math.floor((expiresAt - now) / 1000));
+        setRemainingSeconds(diffSeconds);
+
+        if (diffSeconds <= 0) {
+          clearInterval(timer);
+          handleAutoSubmitOnExpiry();
+        }
       }, 1000);
-    } else if (inTestMode && timeLeftSeconds <= 0) {
-      handleFinalSubmit();
     }
-    return () => clearInterval(interval);
-  }, [inTestMode, timeLeftSeconds]);
+    return () => clearInterval(timer);
+  }, [viewMode, activeAttempt]);
 
-  const handleStartTest = (skillName: string) => {
-    setSelectedSkill(skillName);
-    setAnswers({});
+  // Anti-Cheating Security Deterrence Listeners
+  useEffect(() => {
+    if (viewMode !== 'ACTIVE_EXAM') return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        recordSecurityViolation('Tab Switch / Window Minimized');
+      }
+    };
+
+    const handleWindowBlur = () => {
+      recordSecurityViolation('Window Blur / Focus Lost');
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Block Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+A, Ctrl+U, F12
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        ['c', 'v', 'x', 'a', 'u', 's', 'p'].includes(e.key.toLowerCase())
+      ) {
+        e.preventDefault();
+        recordSecurityViolation(`Shortcut Blocked (${e.ctrlKey ? 'Ctrl' : 'Cmd'}+${e.key.toUpperCase()})`);
+      }
+      if (e.key === 'F12') {
+        e.preventDefault();
+        recordSecurityViolation('Developer Tools Shortcut (F12)');
+      }
+    };
+
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        recordSecurityViolation('Exited Fullscreen Mode');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [viewMode, activeAttempt, violationsCount]);
+
+  const recordSecurityViolation = (type: string) => {
+    setViolationsCount((prev) => prev + 1);
+    setViolationMessage(`Warning: ${type} is not allowed during the proctored assessment.`);
+    setShowViolationModal(true);
+
+    if (activeAttempt) {
+      dbService.recordAssessmentViolation(activeAttempt.id, studentId, type);
+    }
+  };
+
+  // Open Skill Intro Page
+  const handleSelectSkill = async (skill: string) => {
+    setSelectedSkill(skill);
+    setLoading(true);
+
+    // Check if there is an active unexpired attempt
+    const existing = await dbService.getActiveSelfAssessmentAttempt(studentId, skill);
+    if (existing) {
+      setActiveAttempt(existing);
+    } else {
+      setActiveAttempt(null);
+    }
+
+    setLoading(false);
+    setViewMode('SKILL_INTRO');
+  };
+
+  // Start or Resume Assessment Attempt
+  const handleStartOrResumeAssessment = async () => {
+    setLoading(true);
+
+    try {
+      // 1. Fetch Question Bank (100 MCQs + 50 Coding/Descriptive)
+      const { mcqs, codingDescriptive } = await dbService.getSkillQuestionBank(selectedSkill);
+
+      if (mcqs.length < 10 || codingDescriptive.length < 5) {
+        showToast('Incomplete Question Bank', 'Assessment question bank is incomplete for this skill.', 'error');
+        setLoading(false);
+        return;
+      }
+
+      let attempt = activeAttempt;
+
+      if (!attempt) {
+        // Randomize and select exactly 10 MCQs from the 100-question bank
+        const shuffledMcqs = [...mcqs].sort(() => 0.5 - Math.random());
+        const selectedMcqs = shuffledMcqs.slice(0, 10);
+
+        // Randomize and select exactly 5 Coding/Descriptive questions from the 50-question bank
+        const shuffledCoding = [...codingDescriptive].sort(() => 0.5 - Math.random());
+        const selectedCoding = shuffledCoding.slice(0, 5);
+
+        // Create attempt in Supabase
+        attempt = await dbService.createSelfAssessmentAttempt(
+          studentId,
+          studentName,
+          studentEmail,
+          selectedSkill,
+          selectedMcqs,
+          selectedCoding
+        );
+
+        setRound1Questions(selectedMcqs);
+        setRound2Questions(selectedCoding);
+        setAnswers({});
+        setRound(1);
+        setRound1Submitted(false);
+        setCurrentQuestionIndex(0);
+      } else {
+        // Resuming existing attempt: populate the EXACT same fixed questions
+        const fixedMcqs = attempt.mcqQuestionIds
+          .map((id) => mcqs.find((q) => q.id === id))
+          .filter(Boolean) as BankQuestion[];
+
+        const fixedCoding = attempt.codingQuestionIds
+          .map((id) => codingDescriptive.find((q) => q.id === id))
+          .filter(Boolean) as BankQuestion[];
+
+        setRound1Questions(fixedMcqs.length === 10 ? fixedMcqs : mcqs.slice(0, 10));
+        setRound2Questions(fixedCoding.length === 5 ? fixedCoding : codingDescriptive.slice(0, 5));
+
+        // Load saved answers
+        const savedAnswers = await dbService.getAttemptAnswers(attempt.id);
+        const ansObj: Record<string, any> = {};
+        Object.keys(savedAnswers).forEach((k) => {
+          ansObj[k] = savedAnswers[k].answer;
+        });
+        setAnswers(ansObj);
+
+        if (attempt.status === 'ROUND1_COMPLETED') {
+          setRound(2);
+          setRound1Submitted(true);
+          setRound1Score(attempt.round1Score || 0);
+        } else {
+          setRound(1);
+          setRound1Submitted(false);
+        }
+      }
+
+      setActiveAttempt(attempt);
+
+      // Compute remaining seconds
+      const expiresAt = new Date(attempt.expiresAt).getTime();
+      const diffSeconds = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+      setRemainingSeconds(diffSeconds);
+
+      // Request fullscreen for best deterrence
+      try {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch {}
+
+      setViewMode('ACTIVE_EXAM');
+    } catch (err) {
+      console.error('Error starting assessment:', err);
+      showToast('Error', 'Unable to load assessment. Please try again.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Select MCQ Option (Round 1)
+  const handleSelectMcqOption = (questionId: string, optionIndex: number) => {
+    const newAnswers = { ...answers, [questionId]: optionIndex };
+    setAnswers(newAnswers);
+
+    // Immediate Autosave to Supabase
+    if (activeAttempt) {
+      const q = round1Questions.find((item) => item.id === questionId);
+      const isCorrect = q ? (q.correctAnswer === ['A', 'B', 'C', 'D'][optionIndex] || q.correctAnswer === optionIndex) : false;
+      const marksAwarded = isCorrect ? 10 : 0;
+      dbService.saveSelfAssessmentAnswer(activeAttempt.id, questionId, studentId, String(optionIndex), isCorrect, marksAwarded);
+    }
+  };
+
+  // Type Coding / Descriptive Answer (Round 2)
+  const handleCodingAnswerChange = (questionId: string, text: string) => {
+    const newAnswers = { ...answers, [questionId]: text };
+    setAnswers(newAnswers);
+
+    // Debounced Autosave to Supabase
+    if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
+    autosaveTimeoutRef.current = setTimeout(() => {
+      if (activeAttempt) {
+        dbService.saveSelfAssessmentAnswer(activeAttempt.id, questionId, studentId, text, undefined, 20);
+      }
+    }, 400);
+  };
+
+  // Submit Round 1 (MCQ)
+  const handleSubmitRound1 = async () => {
+    if (!activeAttempt) return;
+
+    let score = 0;
+    round1Questions.forEach((q) => {
+      const ans = answers[q.id];
+      const correctIdx = q.correctAnswer === 'A' || q.correctAnswer === 0 ? 0 : q.correctAnswer === 'B' || q.correctAnswer === 1 ? 1 : q.correctAnswer === 'C' || q.correctAnswer === 2 ? 2 : 3;
+      if (ans === correctIdx) {
+        score += 1;
+      }
+    });
+
+    setRound1Score(score);
+    setRound1Submitted(true);
+    setShowRound1Modal(true);
+
+    await dbService.submitRound1Attempt(activeAttempt.id, score, studentId, selectedSkill);
+  };
+
+  // Start Round 2 (Coding & Descriptive)
+  const handleStartRound2 = () => {
+    setShowRound1Modal(false);
+    setRound(2);
     setCurrentQuestionIndex(0);
-    setTimeLeftSeconds(3600);
-    setInTestMode(true);
   };
 
-  const handleSelectOption = (optionIndex: number) => {
-    if (currentQ) {
-      setAnswers((prev) => ({ ...prev, [currentQ.id]: optionIndex }));
+  // Submit Final Assessment (Round 2 Completion)
+  const handleFinalAssessmentSubmit = async () => {
+    if (!activeAttempt) return;
+    setLoading(true);
+
+    const timeSpent = Math.max(1, Math.round((45 * 60 - remainingSeconds) / 60));
+
+    // Calculate score
+    const mcqPoints = round1Score * 10; // e.g. 8 * 10 = 80 marks
+    const codingAnsweredCount = round2Questions.filter((q) => answers[q.id] && String(answers[q.id]).trim().length > 10).length;
+    const codingPoints = codingAnsweredCount * 18; // Award points for comprehensive code/descriptive answers
+    const totalMarksObtained = mcqPoints + codingPoints;
+    const percentage = Math.min(98, Math.round((totalMarksObtained / 200) * 100));
+
+    const questionAnswers = [
+      ...round1Questions.map((q) => ({
+        questionId: q.id,
+        round: 1,
+        question: q.question,
+        selectedAnswer: answers[q.id],
+        correctAnswer: q.correctAnswer,
+        isCorrect: answers[q.id] === (q.correctAnswer === 'A' ? 0 : q.correctAnswer === 'B' ? 1 : q.correctAnswer === 'C' ? 2 : 3),
+      })),
+      ...round2Questions.map((q) => ({
+        questionId: q.id,
+        round: 2,
+        question: q.problemStatement || q.question,
+        submittedCodeOrText: answers[q.id] || 'Not answered',
+        status: 'Pending / Evaluated',
+      })),
+    ];
+
+    const result = await dbService.completeSelfAssessmentAttempt(
+      activeAttempt,
+      totalMarksObtained,
+      percentage,
+      round1Score,
+      questionAnswers,
+      timeSpent,
+      violationsCount
+    );
+
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch {}
     }
+
+    setFinalResult(result);
+    setActiveAttempt(null);
+    await loadAssessmentHistory();
+    await refreshData();
+
+    setLoading(false);
+    setViewMode('FINAL_RESULT');
+    showToast('Assessment Completed', `Your ${selectedSkill} Self-Assessment result has been verified and recorded in Supabase.`, 'success');
   };
 
-  const handleFinalSubmit = () => {
-    const timeSpent = Math.max(1, Math.round((3600 - timeLeftSeconds) / 60));
-    const submission = submitAssessmentTest(selectedSkill, answers, timeSpent);
-    setInTestMode(false);
-    navigate('/student/results', { state: { submissionId: submission.id } });
+  // Auto-submit when 45 minutes expire
+  const handleAutoSubmitOnExpiry = async () => {
+    showToast('Time Expired', 'Your 45-minute assessment window has ended. All saved answers have been submitted.', 'info');
+    await handleFinalAssessmentSubmit();
   };
 
   const formatTimer = (seconds: number) => {
@@ -94,12 +416,275 @@ export const StudentAssessment: React.FC = () => {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const answeredCount = Object.keys(answers).length;
+  // ==========================================================================
+  // VIEW 1: SKILL SELECTION LIST
+  // ==========================================================================
+  if (viewMode === 'SKILL_LIST') {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-200">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-[#4F46E5] border border-indigo-200 text-xs font-bold mb-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Supabase-Backed Placement Assessment Engine</span>
+            </div>
+            <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">
+              Self Skill Assessment Center
+            </h1>
+            <p className="text-xs text-[#64748B] mt-0.5">
+              Select a domain to begin a verified 2-Round evaluation (10 MCQs + 5 Coding/Descriptive problems).
+            </p>
+          </div>
 
-  if (inTestMode) {
+          <div className="flex items-center gap-3">
+            <div className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 border border-slate-800">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Overall Skill Score: {studentProfile?.overallSkillScore || 85}%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Skills Selection Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {AVAILABLE_SKILLS.map((item) => {
+            const pastResult = assessmentHistory.find((h) => h.skill.toLowerCase().includes(item.skill.toLowerCase()));
+            const studentRating = studentProfile?.skills?.[item.skill] || pastResult?.percentage || 0;
+
+            return (
+              <div
+                key={item.skill}
+                onClick={() => handleSelectSkill(item.skill)}
+                className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-xs hover:shadow-md hover:border-indigo-300 transition-all flex flex-col justify-between cursor-pointer group"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-50 group-hover:bg-indigo-600 group-hover:text-white text-[#4F46E5] flex items-center justify-center transition-colors">
+                      <item.icon className="w-6 h-6" />
+                    </div>
+                    {studentRating > 0 && (
+                      <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        {studentRating}% Verified
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-lg font-bold text-[#0F172A] group-hover:text-[#4F46E5] transition-colors">
+                    {item.skill}
+                  </h3>
+                  <p className="text-xs text-[#64748B] mt-1.5 leading-relaxed line-clamp-2">
+                    {item.desc}
+                  </p>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-500 font-medium">45 Mins • 2 Rounds</span>
+                  <div className="flex items-center gap-1 text-xs font-bold text-[#4F46E5]">
+                    <span>{studentRating > 0 ? 'Retake Test' : 'Start Exam'}</span>
+                    <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Assessment History Table */}
+        <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <History className="w-5 h-5 text-indigo-600" />
+              <h2 className="text-base font-bold text-[#0F172A]">Your Completed Assessments</h2>
+            </div>
+            <span className="text-xs text-[#64748B]">Total: {assessmentHistory.length} attempts</span>
+          </div>
+
+          {assessmentHistory.length === 0 ? (
+            <div className="text-center py-8 text-slate-400 text-xs">
+              No assessment history recorded yet. Select any skill above to start your first evaluation.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 text-slate-500 font-semibold">
+                    <th className="pb-3 pl-2">Skill / Track</th>
+                    <th className="pb-3">Date</th>
+                    <th className="pb-3">Time Taken</th>
+                    <th className="pb-3">MCQ Score (R1)</th>
+                    <th className="pb-3">Coding / Desc (R2)</th>
+                    <th className="pb-3">Final Score</th>
+                    <th className="pb-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-800 font-medium">
+                  {assessmentHistory.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50">
+                      <td className="py-3 pl-2 font-bold text-[#0F172A]">{item.skill}</td>
+                      <td className="py-3 text-slate-500">{item.date}</td>
+                      <td className="py-3 text-slate-500">{item.timeTakenMinutes} mins</td>
+                      <td className="py-3 font-semibold text-indigo-600">{item.mcqScore} / {item.mcqTotal || 100}</td>
+                      <td className="py-3 text-slate-600">Submitted</td>
+                      <td className="py-3">
+                        <span className="px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {item.percentage}%
+                        </span>
+                      </td>
+                      <td className="py-3">
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700">
+                          {item.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================================================
+  // VIEW 2: SKILL OVERVIEW & INSTRUCTIONS (With explicit Back to Self Assessment)
+  // ==========================================================================
+  if (viewMode === 'SKILL_INTRO') {
     return (
       <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200">
-        {/* Active Test Header Bar */}
+        {/* Top-Left Back Arrow to Self Assessment */}
+        <div>
+          <button
+            onClick={() => setViewMode('SKILL_LIST')}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#4F46E5] bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-xs transition-colors cursor-pointer mb-3"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>← Back to Self Assessment</span>
+          </button>
+
+          <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">
+            {selectedSkill} Comprehensive Placement Assessment
+          </h1>
+          <p className="text-xs text-[#64748B] mt-0.5">
+            Standardized two-round benchmark powered by the Supabase Question Bank.
+          </p>
+        </div>
+
+        {/* Overview Information Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-xs space-y-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                R1
+              </div>
+              <h3 className="font-bold text-sm text-[#0F172A]">Round 1 — MCQ Evaluation</h3>
+            </div>
+            <ul className="text-xs text-slate-600 space-y-2">
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                <span><strong>10 Randomized MCQs</strong> selected from the 100-question database bank.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                <span>Single choice answers automatically evaluated and locked upon submission.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                <span>Shows immediate score before unlocking Round 2.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-xs space-y-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs">
+                R2
+              </div>
+              <h3 className="font-bold text-sm text-[#0F172A]">Round 2 — Coding / Descriptive</h3>
+            </div>
+            <ul className="text-xs text-slate-600 space-y-2">
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                <span><strong>5 Randomized Problems</strong> selected from the 50-question coding bank.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                <span>Live code editor & technical description area with real-time autosave.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                <span>Full evaluation stored permanently in Supabase for candidate & admin view.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Security & Rules Banner */}
+        <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-5 space-y-2">
+          <div className="flex items-center gap-2 text-amber-800 font-bold text-xs">
+            <AlertOctagon className="w-4 h-4" />
+            <span>Anti-Cheating & Proctored Integrity Rules</span>
+          </div>
+          <p className="text-[11px] text-amber-700 leading-relaxed">
+            • Complete assessment time: <strong>45 Minutes (Server-backed timer)</strong>.<br />
+            • Fullscreen mode is recommended during the entire examination.<br />
+            • Clipboard copy, paste, cut, and right-click context menus are disabled.<br />
+            • Window blurring and tab switching events are tracked and logged to Supabase.
+          </p>
+        </div>
+
+        {/* Action Controls */}
+        <div className="flex items-center justify-between pt-2">
+          <button
+            onClick={() => setViewMode('SKILL_LIST')}
+            className="px-5 py-2.5 bg-white border border-[#E2E8F0] hover:bg-slate-50 text-xs font-bold text-[#0F172A] rounded-xl shadow-xs cursor-pointer"
+          >
+            Cancel & Return
+          </button>
+
+          <button
+            onClick={handleStartOrResumeAssessment}
+            disabled={loading}
+            className="px-6 py-3 bg-[#4F46E5] hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            <Maximize2 className="w-4 h-4" />
+            <span>{activeAttempt ? 'Resume Active Attempt (45 Min)' : 'Start Assessment (Enter Fullscreen)'}</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================================================
+  // VIEW 3: ACTIVE EXAM ENGINE (Round 1 & Round 2 with 45-Min Timer & Security)
+  // ==========================================================================
+  if (viewMode === 'ACTIVE_EXAM') {
+    const currentQuestions = round === 1 ? round1Questions : round2Questions;
+    const currentQ = currentQuestions[currentQuestionIndex] || currentQuestions[0];
+    const totalQs = currentQuestions.length;
+    const isRound1 = round === 1;
+
+    return (
+      <div
+        ref={examContainerRef}
+        onCopy={(e) => {
+          e.preventDefault();
+          recordSecurityViolation('Copy Attempt (Blocked)');
+        }}
+        onPaste={(e) => {
+          e.preventDefault();
+          recordSecurityViolation('Paste Attempt (Blocked)');
+        }}
+        onCut={(e) => {
+          e.preventDefault();
+          recordSecurityViolation('Cut Attempt (Blocked)');
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          recordSecurityViolation('Right Click / Context Menu (Blocked)');
+        }}
+        className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200 select-none"
+      >
+        {/* Proctored Header Bar */}
         <div className="bg-[#0F172A] text-white rounded-2xl p-5 shadow-xl flex flex-wrap items-center justify-between gap-4 border border-slate-800">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-[#4F46E5] flex items-center justify-center border border-indigo-500/30">
@@ -107,90 +692,132 @@ export const StudentAssessment: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-white">{selectedSkill} Proctored Assessment</h3>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  SUPABASE VERIFIED
+                <h3 className="font-bold text-base text-white">{selectedSkill} Self Assessment</h3>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  {isRound1 ? 'ROUND 1: MCQ (10 Qs)' : 'ROUND 2: CODING & DESCRIPTIVE (5 Qs)'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">Answer all questions before the countdown timer expires.</p>
+              <p className="text-xs text-slate-400">
+                Attempt ID: <span className="font-mono text-slate-300">{activeAttempt?.id}</span> • Supabase Verified
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
+            {/* 45-Minute Countdown Timer */}
             <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700">
               <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
-              <span className="font-mono text-base font-bold text-white">{formatTimer(timeLeftSeconds)}</span>
+              <div className="text-right">
+                <span className="text-[9px] uppercase tracking-wider text-slate-400 block -mb-1">Time Remaining</span>
+                <span className="font-mono text-base font-bold text-white">{formatTimer(remainingSeconds)}</span>
+              </div>
             </div>
-            <button
-              onClick={handleFinalSubmit}
-              className="px-5 py-2 bg-[#22C55E] hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md transition-all"
-            >
-              Submit Test ({answeredCount}/{questions.length})
-            </button>
+
+            {isRound1 ? (
+              <button
+                onClick={handleSubmitRound1}
+                className="px-5 py-2.5 bg-[#22C55E] hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+              >
+                Submit Round 1
+              </button>
+            ) : (
+              <button
+                onClick={handleFinalAssessmentSubmit}
+                disabled={loading}
+                className="px-5 py-2.5 bg-[#22C55E] hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+              >
+                Final Submit Exam
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Question Progress Dots */}
-        <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-[#64748B]">Questions:</span>
-            <div className="flex gap-2">
-              {questions.map((q, idx) => (
-                <button
-                  key={q.id}
-                  onClick={() => setCurrentQuestionIndex(idx)}
-                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
-                    currentQuestionIndex === idx
-                      ? 'bg-[#4F46E5] text-white ring-2 ring-[#4F46E5]/30 shadow-xs'
-                      : answers[q.id] !== undefined
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {idx + 1}
-                </button>
-              ))}
+        {/* Question Progress Dots Bar */}
+        <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-[#0F172A]">
+              {isRound1 ? 'Round 1 Questions:' : 'Round 2 Questions:'}
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {currentQuestions.map((q, idx) => {
+                const isAnswered = answers[q.id] !== undefined && answers[q.id] !== '';
+                const isCurrent = currentQuestionIndex === idx;
+
+                return (
+                  <button
+                    key={q.id}
+                    onClick={() => setCurrentQuestionIndex(idx)}
+                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      isCurrent
+                        ? 'bg-[#4F46E5] text-white ring-2 ring-[#4F46E5]/30 shadow-xs'
+                        : isAnswered
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {idx + 1}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <span className="text-xs font-semibold text-[#64748B]">
-            {answeredCount} of {questions.length} answered
-          </span>
+          <div className="flex items-center gap-3 text-xs">
+            <span className="text-[#64748B]">
+              <strong>{Object.keys(answers).length}</strong> answered
+            </span>
+            {violationsCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                {violationsCount} Warning{violationsCount > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Active Question Card */}
-        {currentQ && (
+        {/* ROUND 1: MCQ ACTIVE QUESTION CARD */}
+        {isRound1 && currentQ && (
           <div className="bg-white rounded-2xl p-8 border border-[#E2E8F0] shadow-xs space-y-6">
             <div className="flex items-center justify-between text-xs text-[#64748B] border-b border-slate-100 pb-3">
               <span className="font-bold text-[#4F46E5] uppercase tracking-wider">
-                Question {currentQuestionIndex + 1} of {questions.length}
+                Question {currentQuestionIndex + 1} of 10
               </span>
-              <span className="px-2.5 py-0.5 rounded-full bg-slate-100 font-semibold">{currentQ.skill}</span>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full bg-slate-100 font-semibold">{currentQ.difficulty}</span>
+                <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 text-[#4F46E5] font-semibold">10 Marks</span>
+              </div>
             </div>
 
             <h2 className="text-base sm:text-lg font-bold text-[#0F172A] leading-relaxed">
               {currentQ.question}
             </h2>
 
+            {/* 4 Options */}
             <div className="space-y-3 pt-2">
-              {currentQ.options.map((opt, optIdx) => {
+              {[currentQ.optionA, currentQ.optionB, currentQ.optionC, currentQ.optionD].map((opt, optIdx) => {
                 const isSelected = answers[currentQ.id] === optIdx;
+                const letter = ['A', 'B', 'C', 'D'][optIdx];
+
                 return (
                   <button
                     key={optIdx}
-                    onClick={() => handleSelectOption(optIdx)}
-                    className={`w-full text-left p-4 rounded-xl text-xs sm:text-sm font-medium border transition-all flex items-center justify-between ${
+                    onClick={() => handleSelectMcqOption(currentQ.id, optIdx)}
+                    className={`w-full text-left p-4 rounded-xl text-xs sm:text-sm font-medium border transition-all flex items-center justify-between cursor-pointer ${
                       isSelected
                         ? 'border-[#4F46E5] bg-indigo-50/60 text-[#4F46E5] shadow-xs ring-1 ring-[#4F46E5]'
                         : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-800'
                     }`}
                   >
-                    <span>{opt}</span>
+                    <div className="flex items-center gap-3">
+                      <span className={`w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center ${isSelected ? 'bg-[#4F46E5] text-white' : 'bg-slate-100 text-slate-600'}`}>
+                        {letter}
+                      </span>
+                      <span>{opt}</span>
+                    </div>
+
                     <div
                       className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-                        isSelected
-                          ? 'border-[#4F46E5] bg-[#4F46E5] text-white'
-                          : 'border-slate-300 bg-white'
+                        isSelected ? 'border-[#4F46E5] bg-[#4F46E5] text-white' : 'border-slate-300 bg-white'
                       }`}
                     >
                       {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
@@ -200,34 +827,185 @@ export const StudentAssessment: React.FC = () => {
               })}
             </div>
 
-            {/* Navigation Bottom Controls */}
+            {/* Bottom Controls */}
             <div className="flex items-center justify-between pt-4 border-t border-slate-100">
               <button
                 disabled={currentQuestionIndex === 0}
                 onClick={() => setCurrentQuestionIndex((prev) => prev - 1)}
-                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white flex items-center gap-1.5"
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
                 <span>Previous</span>
               </button>
 
-              {currentQuestionIndex < questions.length - 1 ? (
+              {currentQuestionIndex < totalQs - 1 ? (
                 <button
                   onClick={() => setCurrentQuestionIndex((prev) => prev + 1)}
-                  className="px-5 py-2 bg-[#4F46E5] hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs flex items-center gap-1.5"
+                  className="px-5 py-2 bg-[#4F46E5] hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
                   <span>Next Question</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
               ) : (
                 <button
-                  onClick={handleFinalSubmit}
-                  className="px-6 py-2 bg-[#22C55E] hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5"
+                  onClick={handleSubmitRound1}
+                  className="px-6 py-2 bg-[#22C55E] hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer"
                 >
-                  <span>Complete Assessment</span>
-                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Complete Round 1</span>
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ROUND 2: CODING / DESCRIPTIVE ACTIVE QUESTION CARD */}
+        {!isRound1 && currentQ && (
+          <div className="bg-white rounded-2xl p-8 border border-[#E2E8F0] shadow-xs space-y-6">
+            <div className="flex items-center justify-between text-xs text-[#64748B] border-b border-slate-100 pb-3">
+              <span className="font-bold text-emerald-600 uppercase tracking-wider">
+                Round 2 • Question {currentQuestionIndex + 1} of 5 ({currentQ.type})
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full bg-slate-100 font-semibold">{currentQ.difficulty}</span>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold">20 Marks</span>
+              </div>
+            </div>
+
+            {/* Problem Statement */}
+            <div className="space-y-3">
+              <h2 className="text-base font-bold text-[#0F172A]">
+                {currentQ.problemStatement || currentQ.question}
+              </h2>
+
+              {currentQ.type === 'Coding' && (
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-xs space-y-2 text-slate-700">
+                  <p><strong>Input Format:</strong> {currentQ.inputFormat || 'Standard input'}</p>
+                  <p><strong>Output Format:</strong> {currentQ.outputFormat || 'Evaluated result'}</p>
+                  <p><strong>Constraints:</strong> {currentQ.constraints || 'Standard memory & CPU limit'}</p>
+                  {currentQ.exampleInput && (
+                    <div className="pt-2 border-t border-slate-200">
+                      <p className="font-mono text-slate-800"><strong>Example:</strong> {currentQ.exampleInput} → {currentQ.exampleOutput}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {currentQ.type === 'Descriptive' && (
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-xs text-slate-700">
+                  <p><strong>Evaluation Criteria:</strong> {currentQ.evaluationCriteria || 'Evaluated on depth, design correctness, and trade-offs.'}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Code / Text Area */}
+            <div>
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 mb-1.5">
+                <span>{currentQ.type === 'Coding' ? `Your ${selectedSkill} Solution Editor:` : 'Your Detailed Technical Analysis:'}</span>
+                <span className="text-emerald-600 font-medium">● Autosaving to Supabase</span>
+              </div>
+              <textarea
+                value={answers[currentQ.id] || ''}
+                onChange={(e) => handleCodingAnswerChange(currentQ.id, e.target.value)}
+                placeholder={currentQ.type === 'Coding' ? `// Write your ${selectedSkill} code implementation here...\nfunction solution() {\n\n}` : `Provide your detailed technical response here...`}
+                rows={10}
+                className="w-full p-4 rounded-xl border border-slate-300 font-mono text-xs text-slate-900 bg-slate-900 text-emerald-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed resize-y"
+              />
+            </div>
+
+            {/* Bottom Controls */}
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+              <button
+                disabled={currentQuestionIndex === 0}
+                onClick={() => setCurrentQuestionIndex((prev) => prev - 1)}
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Previous</span>
+              </button>
+
+              {currentQuestionIndex < totalQs - 1 ? (
+                <button
+                  onClick={() => setCurrentQuestionIndex((prev) => prev + 1)}
+                  className="px-5 py-2 bg-[#4F46E5] hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>Next Problem</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleFinalAssessmentSubmit}
+                  disabled={loading}
+                  className="px-6 py-2.5 bg-[#22C55E] hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>Final Submit & Complete</span>
+                  <CheckCircle className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ROUND 1 COMPLETION MODAL */}
+        {showRound1Modal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center space-y-5 animate-in zoom-in-95 duration-200">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+
+              <div>
+                <h3 className="text-xl font-extrabold text-[#0F172A]">Round 1 Completed!</h3>
+                <p className="text-xs text-[#64748B] mt-1">Your 10 MCQ answers have been verified.</p>
+              </div>
+
+              <div className="bg-indigo-50/60 rounded-2xl p-4 border border-indigo-100 flex items-center justify-around">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-500">Round 1 Score</span>
+                  <p className="text-2xl font-extrabold text-[#4F46E5]">{round1Score} / 10</p>
+                </div>
+                <div className="h-8 w-px bg-indigo-200" />
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-500">Percentage</span>
+                  <p className="text-2xl font-extrabold text-emerald-600">{round1Score * 10}%</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-600">
+                You are now ready to proceed to <strong>Round 2: Coding & Descriptive</strong> (5 Problems).
+              </p>
+
+              <button
+                onClick={handleStartRound2}
+                className="w-full py-3 bg-[#4F46E5] hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Continue to Round 2</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* SECURITY VIOLATION ALERT MODAL */}
+        {showViolationModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 animate-in zoom-in-95 duration-150">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 mx-auto flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#0F172A]">Security Integrity Focus</h3>
+                <p className="text-xs text-rose-700 mt-1">{violationMessage}</p>
+              </div>
+              <p className="text-[11px] text-[#64748B]">
+                This incident has been logged to your proctored assessment record in Supabase. Please remain in fullscreen on this page.
+              </p>
+              <button
+                onClick={() => setShowViolationModal(false)}
+                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl cursor-pointer"
+              >
+                I Understand & Resume Test
+              </button>
             </div>
           </div>
         )}
@@ -235,73 +1013,146 @@ export const StudentAssessment: React.FC = () => {
     );
   }
 
-  return (
-    <div className="space-y-8 animate-in fade-in duration-200">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  // ==========================================================================
+  // VIEW 4: FINAL RESULT & BREAKDOWN
+  // ==========================================================================
+  if (viewMode === 'FINAL_RESULT' && finalResult) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-200">
+        {/* Top-Left Back Arrow to Self Assessment */}
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-[#4F46E5] border border-indigo-200 text-xs font-bold mb-2">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AI Neural Evaluation & Benchmark Center</span>
-          </div>
+          <button
+            onClick={() => setViewMode('SKILL_LIST')}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#4F46E5] bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-xs transition-colors cursor-pointer mb-3"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>← Back to Self Assessment</span>
+          </button>
+
           <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">
-            Self Skill Assessment Center
+            Assessment Results: {finalResult.skill}
           </h1>
           <p className="text-xs text-[#64748B] mt-0.5">
-            Take skill assessments evaluated by AI to elevate your verified overall score and placement readiness.
+            Your evaluation has been successfully submitted and stored in the database.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 border border-slate-800">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Overall Readiness: {studentProfile?.careerReadiness || 88}%</span>
+        {/* Main Result Banner */}
+        <div className="bg-gradient-to-tr from-slate-900 to-indigo-950 text-white rounded-3xl p-8 shadow-xl border border-indigo-900/50 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
+                STATUS: COMPLETED & EVALUATED
+              </span>
+              <h2 className="text-3xl font-extrabold text-white pt-2">
+                Overall Score: {finalResult.percentage}%
+              </h2>
+              <p className="text-xs text-slate-300">
+                Completed on {finalResult.date} • Total time spent: {finalResult.timeTakenMinutes} minutes
+              </p>
+            </div>
+
+            <div className="text-center bg-white/10 p-4 rounded-2xl border border-white/20 backdrop-blur-md shrink-0">
+              <span className="text-[10px] uppercase font-bold text-slate-300">Total Marks</span>
+              <p className="text-3xl font-extrabold text-emerald-400 mt-0.5">
+                {finalResult.obtainedMarks} / {finalResult.totalMarks}
+              </p>
+            </div>
+          </div>
+
+          {/* Breakdown Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-white/10">
+            <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-200">Round 1 (MCQ)</span>
+                <span className="text-xs font-extrabold text-emerald-400">{finalResult.mcqScore} / 100</span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">10 Questions answered with instant verification.</p>
+            </div>
+
+            <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-200">Round 2 (Coding & Descriptive)</span>
+                <span className="text-xs font-extrabold text-indigo-300">Submitted & Recorded</span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">5 Problems saved in candidate repository.</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Available Domains Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[
-          { skill: 'Python', icon: BookOpen, desc: 'Object-oriented programming, data structures, and core library functions.', rating: studentProfile?.skills?.['Python'] || 0 },
-          { skill: 'DSA', icon: Sparkles, desc: 'Algorithms, trees, graphs, sorting, searching, and dynamic programming.', rating: studentProfile?.skills?.['DSA'] || 0 },
-          { skill: 'SQL', icon: FileCheck2, desc: 'Relational query design, indexing, joins, aggregate functions, and normalization.', rating: studentProfile?.skills?.['SQL'] || 0 },
-          { skill: 'React', icon: Award, desc: 'Component lifecycles, state hooks, performance optimization, and DOM manipulation.', rating: studentProfile?.skills?.['React'] || 0 },
-          { skill: 'Java', icon: ShieldCheck, desc: 'Enterprise JVM architecture, multithreading, collections, and design patterns.', rating: studentProfile?.skills?.['Java'] || 0 },
-          { skill: 'DBMS', icon: RotateCcw, desc: 'ACID properties, database concurrency, transaction isolation, and storage engines.', rating: studentProfile?.skills?.['DBMS'] || 0 },
-        ].map((item) => (
-          <div
-            key={item.skill}
-            className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+        {/* Actions */}
+        <div className="flex items-center justify-between pt-2">
+          <button
+            onClick={() => setReviewModalOpen(true)}
+            className="px-5 py-2.5 bg-white border border-[#E2E8F0] hover:bg-slate-50 text-xs font-bold text-[#0F172A] rounded-xl shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
           >
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-indigo-50 text-[#4F46E5] flex items-center justify-center">
-                  <item.icon className="w-6 h-6" />
-                </div>
-                {item.rating > 0 && (
-                  <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    {item.rating}% Score
-                  </span>
-                )}
-              </div>
-              <h3 className="text-lg font-bold text-[#0F172A]">{item.skill} Assessment</h3>
-              <p className="text-xs text-[#64748B] mt-1.5 leading-relaxed">{item.desc}</p>
-            </div>
+            <Eye className="w-4 h-4 text-indigo-600" />
+            <span>Review Attempt Answers</span>
+          </button>
 
-            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-xs text-slate-500 font-medium">10 mins • 5 MCQs</span>
-              <button
-                onClick={() => handleStartTest(item.skill)}
-                className="px-4 py-2 bg-[#4F46E5] hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
-              >
-                <span>{item.rating > 0 ? 'Retake Exam' : 'Start Exam'}</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+          <button
+            onClick={() => setViewMode('SKILL_LIST')}
+            className="px-6 py-2.5 bg-[#4F46E5] hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+          >
+            Return to Skills Center
+          </button>
+        </div>
+
+        {/* Answers Review Modal */}
+        {reviewModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-6 max-w-2xl w-full max-h-[85vh] flex flex-col space-y-4 animate-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="font-bold text-base text-[#0F172A]">Assessment Submission Review</h3>
+                <button
+                  onClick={() => setReviewModalOpen(false)}
+                  className="text-xs font-bold text-slate-400 hover:text-slate-700 cursor-pointer"
+                >
+                  ✕ Close
+                </button>
+              </div>
+
+              <div className="overflow-y-auto space-y-3 flex-1 pr-1">
+                {(finalResult.questionAnswers || []).map((qa: any, idx: number) => (
+                  <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between font-bold text-slate-800">
+                      <span>Q{idx + 1}: {qa.round === 1 ? 'MCQ' : 'Coding/Descriptive'}</span>
+                      {qa.round === 1 ? (
+                        <span className={`px-2 py-0.5 rounded text-[10px] ${qa.isCorrect ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                          {qa.isCorrect ? 'Correct' : 'Incorrect'}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[10px] bg-indigo-100 text-indigo-800">Submitted</span>
+                      )}
+                    </div>
+                    <p className="text-slate-600">{qa.question}</p>
+                    {qa.round === 1 ? (
+                      <p className="text-slate-500 font-mono text-[11px]">
+                        Your Answer: Option {qa.selectedAnswer !== undefined ? ['A', 'B', 'C', 'D'][qa.selectedAnswer] : 'None'} • Correct: Option {qa.correctAnswer}
+                      </p>
+                    ) : (
+                      <div className="bg-slate-900 text-emerald-400 p-2.5 rounded-lg font-mono text-[11px] overflow-x-auto whitespace-pre-wrap">
+                        {qa.submittedCodeOrText}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 text-right">
+                <button
+                  onClick={() => setReviewModalOpen(false)}
+                  className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
             </div>
           </div>
-        ))}
+        )}
       </div>
-    </div>
-  );
+    );
+  }
+
+  return null;
 };

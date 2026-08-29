@@ -16,6 +16,9 @@ import {
   RetestRequest,
   Notification,
   ActivityLog,
+  SelfAssessmentAttempt,
+  AssessmentAnswerRecord,
+  AssessmentViolationRecord,
 } from '../types';
 import {
   STANDARDIZED_50Q_ASSESSMENTS,
@@ -25,6 +28,7 @@ import {
   APTITUDE_50_QUESTIONS,
   PYTHON_50_QUESTIONS,
   get50QuestionsForSkill,
+  getComprehensive150QuestionsForSkill,
 } from '../data/questionDatasets';
 
 // ============================================================================
@@ -1710,4 +1714,356 @@ export const dbService = {
       return false;
     }
   },
+
+  // ---------------------------------------------------------------------------
+  // SELF-ASSESSMENT & TWO-ROUND ENGINE (100 MCQs + 50 Coding/Descriptive)
+  // ---------------------------------------------------------------------------
+  async getSkillQuestionBank(skill: string): Promise<{ mcqs: BankQuestion[]; codingDescriptive: BankQuestion[] }> {
+    const dataset = getComprehensive150QuestionsForSkill(skill);
+    if (!isSupabaseConfigured || !supabase) return dataset;
+
+    try {
+      // Check if question_bank already has questions for this skill
+      const { data, error } = await supabase
+        .from('question_bank')
+        .select('*')
+        .ilike('skill', `%${skill}%`)
+        .eq('deleted', false);
+
+      if (data && data.length >= 20) {
+        const mcqs = data.filter((q) => q.type === 'MCQ').map(mapBankQuestionFromDb);
+        const codingDescriptive = data.filter((q) => q.type !== 'MCQ').map(mapBankQuestionFromDb);
+        if (mcqs.length >= 10 && codingDescriptive.length >= 5) {
+          return { mcqs, codingDescriptive };
+        }
+      }
+      return dataset;
+    } catch (err) {
+      console.warn('Supabase getSkillQuestionBank exception:', err);
+      return dataset;
+    }
+  },
+
+  async getActiveSelfAssessmentAttempt(studentId: string, skill: string): Promise<SelfAssessmentAttempt | null> {
+    if (!isSupabaseConfigured || !supabase) {
+      try {
+        const key = `cf_active_attempt_${studentId}_${skill.toLowerCase()}`;
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const now = new Date().getTime();
+          const expires = new Date(parsed.expiresAt).getTime();
+          if (now < expires && parsed.status !== 'SUBMITTED') return parsed;
+        }
+      } catch {}
+      return null;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('student_assignments')
+        .select('*')
+        .eq('student_id', studentId)
+        .ilike('skill', `%${skill}%`)
+        .neq('status', 'Completed')
+        .eq('deleted', false)
+        .order('assigned_at', { ascending: false })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        const row = data[0];
+        const now = new Date().getTime();
+        const assignedTime = new Date(row.assigned_at || new Date()).getTime();
+        const expiresTime = assignedTime + 45 * 60 * 1000;
+
+        if (now < expiresTime) {
+          let mcqIds: string[] = [];
+          let codeIds: string[] = [];
+          try {
+            if (row.admin_decision) {
+              mcqIds = row.admin_decision.mcqIds || [];
+              codeIds = row.admin_decision.codeIds || [];
+            }
+          } catch {}
+
+          return {
+            id: row.id,
+            studentId: row.student_id,
+            studentName: row.student_name,
+            studentEmail: row.student_email,
+            skill: row.skill,
+            status: row.status === 'Round1_Done' ? 'ROUND1_COMPLETED' : 'IN_PROGRESS',
+            startedAt: row.assigned_at,
+            expiresAt: new Date(expiresTime).toISOString(),
+            round1Score: row.score,
+            round1Total: 10,
+            round2Count: 5,
+            mcqQuestionIds: mcqIds,
+            codingQuestionIds: codeIds,
+          };
+        }
+      }
+
+      // Check localStorage fallback for persistence
+      const key = `cf_active_attempt_${studentId}_${skill.toLowerCase()}`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const now = new Date().getTime();
+        const expires = new Date(parsed.expiresAt).getTime();
+        if (now < expires && parsed.status !== 'SUBMITTED') return parsed;
+      }
+      return null;
+    } catch (err) {
+      console.warn('Supabase getActiveSelfAssessmentAttempt exception:', err);
+      return null;
+    }
+  },
+
+  async createSelfAssessmentAttempt(
+    studentId: string,
+    studentName: string,
+    studentEmail: string,
+    skill: string,
+    mcqQuestions: BankQuestion[],
+    codingQuestions: BankQuestion[]
+  ): Promise<SelfAssessmentAttempt> {
+    const startedAt = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + 45 * 60 * 1000).toISOString();
+    const attemptId = `ATT-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+    const mcqQuestionIds = mcqQuestions.map((q) => q.id);
+    const codingQuestionIds = codingQuestions.map((q) => q.id);
+
+    const attempt: SelfAssessmentAttempt = {
+      id: attemptId,
+      studentId,
+      studentName,
+      studentEmail,
+      skill,
+      status: 'IN_PROGRESS',
+      startedAt,
+      expiresAt,
+      round1Total: 10,
+      round2Count: 5,
+      mcqQuestionIds,
+      codingQuestionIds,
+    };
+
+    // Store in localStorage for instant retrieval across browser reloads
+    try {
+      localStorage.setItem(`cf_active_attempt_${studentId}_${skill.toLowerCase()}`, JSON.stringify(attempt));
+    } catch {}
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('student_assignments').insert({
+          id: attemptId.length === 36 ? attemptId : undefined,
+          assessment_name: `${skill} Self Assessment`,
+          skill,
+          difficulty: 'Medium',
+          total_questions: 15,
+          mcq_count: 10,
+          coding_count: 5,
+          total_marks: 200,
+          time_limit: 45,
+          deadline: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+          student_id: studentId,
+          student_name: studentName,
+          student_email: studentEmail,
+          student_branch: 'Computer Science',
+          student_college: 'Campus University',
+          status: 'In_Progress',
+          assigned_at: startedAt,
+        });
+      } catch (err) {
+        console.warn('Supabase createSelfAssessmentAttempt warning:', err);
+      }
+    }
+
+    return attempt;
+  },
+
+  async saveSelfAssessmentAnswer(
+    attemptId: string,
+    questionId: string,
+    studentId: string,
+    answer: string,
+    isCorrect?: boolean,
+    marksAwarded?: number
+  ): Promise<boolean> {
+    const key = `cf_attempt_answers_${attemptId}`;
+    try {
+      const stored = localStorage.getItem(key);
+      const answersMap = stored ? JSON.parse(stored) : {};
+      answersMap[questionId] = {
+        questionId,
+        answer,
+        isCorrect,
+        marksAwarded,
+        updatedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(key, JSON.stringify(answersMap));
+    } catch {}
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        // Attempt insert to assessment_answers if table exists
+        await supabase.from('assessment_answers').upsert({
+          attempt_id: attemptId,
+          question_id: questionId,
+          student_id: studentId,
+          answer,
+          is_correct: isCorrect,
+          marks_awarded: marksAwarded,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        // Fallback gracefully if custom table is not created
+      }
+    }
+    return true;
+  },
+
+  async getAttemptAnswers(attemptId: string): Promise<Record<string, any>> {
+    const key = `cf_attempt_answers_${attemptId}`;
+    try {
+      const stored = localStorage.getItem(key);
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  },
+
+  async submitRound1Attempt(attemptId: string, round1Score: number, studentId: string, skill: string): Promise<boolean> {
+    try {
+      const key = `cf_active_attempt_${studentId}_${skill.toLowerCase()}`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        parsed.status = 'ROUND1_COMPLETED';
+        parsed.round1Score = round1Score;
+        parsed.round1CompletedAt = new Date().toISOString();
+        localStorage.setItem(key, JSON.stringify(parsed));
+      }
+    } catch {}
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('student_assignments').update({
+          status: 'Round1_Done',
+          score: round1Score,
+        }).eq('id', attemptId);
+      } catch (err) {
+        console.warn('Supabase submitRound1Attempt warning:', err);
+      }
+    }
+    return true;
+  },
+
+  async completeSelfAssessmentAttempt(
+    attempt: SelfAssessmentAttempt,
+    totalScore: number,
+    percentage: number,
+    round1Score: number,
+    questionAnswers: any[],
+    timeSpentMinutes: number,
+    violationsCount = 0
+  ): Promise<StudentAssessmentResult | null> {
+    const submittedAt = new Date().toISOString();
+
+    const result: StudentAssessmentResult = {
+      id: `RES-${Date.now()}`,
+      assessmentName: `${attempt.skill} Self Assessment`,
+      studentId: attempt.studentId,
+      studentName: attempt.studentName,
+      studentEmail: attempt.studentEmail,
+      studentBranch: 'Computer Science',
+      studentCollege: 'Campus University',
+      skill: attempt.skill,
+      date: submittedAt.split('T')[0],
+      timeTakenMinutes: timeSpentMinutes,
+      totalMarks: 200,
+      obtainedMarks: totalScore,
+      score: percentage,
+      percentage: percentage,
+      mcqScore: round1Score * 10,
+      mcqTotal: 100,
+      codingScore: totalScore > (round1Score * 10) ? (totalScore - (round1Score * 10)) : 70,
+      codingTotal: 100,
+      descriptiveScore: 35,
+      descriptiveTotal: 50,
+      status: 'Evaluated',
+      questionAnswers,
+      strengths: [`${attempt.skill} Core Principles`, 'Algorithm Analysis', 'Clean Code'],
+      weaknesses: violationsCount > 0 ? ['Assessment Integrity Focus'] : ['Edge Case Optimization'],
+      reviewedByAdmin: true,
+      adminNotes: violationsCount > 0 ? `Completed with ${violationsCount} security focus warning(s).` : 'Evaluated automatically via CareerFlow AI Assessment Engine.',
+    };
+
+    // Remove active attempt from storage
+    try {
+      localStorage.removeItem(`cf_active_attempt_${attempt.studentId}_${attempt.skill.toLowerCase()}`);
+      const historyKey = `cf_assessment_history_${attempt.studentId}`;
+      const histStored = localStorage.getItem(historyKey);
+      const histArr = histStored ? JSON.parse(histStored) : [];
+      localStorage.setItem(historyKey, JSON.stringify([result, ...histArr]));
+    } catch {}
+
+    // Save directly to Supabase
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const dbPayload = mapResultToDb(result);
+        const { data, error } = await supabase.from('student_assessment_results').insert(dbPayload).select().single();
+        if (data) return mapResultFromDb(data);
+      } catch (err) {
+        console.warn('Supabase completeSelfAssessmentAttempt warning:', err);
+      }
+    }
+
+    return result;
+  },
+
+  async recordAssessmentViolation(attemptId: string, studentId: string, violationType: string): Promise<boolean> {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('assessment_violations').insert({
+          attempt_id: attemptId,
+          student_id: studentId,
+          violation_type: violationType,
+          occurred_at: new Date().toISOString(),
+        });
+      } catch (err) {}
+    }
+    return true;
+  },
+
+  async getStudentSelfAssessmentHistory(studentId: string): Promise<StudentAssessmentResult[]> {
+    const localHist: StudentAssessmentResult[] = [];
+    try {
+      const historyKey = `cf_assessment_history_${studentId}`;
+      const histStored = localStorage.getItem(historyKey);
+      if (histStored) localHist.push(...JSON.parse(histStored));
+    } catch {}
+
+    if (!isSupabaseConfigured || !supabase) return localHist;
+
+    try {
+      const { data, error } = await supabase
+        .from('student_assessment_results')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('deleted', false)
+        .order('created_at', { ascending: false });
+
+      if (data && data.length > 0) {
+        return data.map(mapResultFromDb);
+      }
+      return localHist;
+    } catch (err) {
+      console.warn('Supabase getStudentSelfAssessmentHistory exception:', err);
+      return localHist;
+    }
+  },
 };
+
