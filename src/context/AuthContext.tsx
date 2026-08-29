@@ -36,11 +36,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function mapProfileToUser(profile: any, emailFallback?: string): User {
+function mapProfileToUser(profile: any, emailFallback?: string, roleOverride?: UserRole): User {
+  const email = (profile.email || emailFallback || '').toLowerCase().trim();
+  const isAdminEmail = email === '241fa04154@gmail.com' || email === 'yasaswinadella.1800@gmail.com' || email.includes('admin');
   const rawRole = (profile.role || '').toString().toLowerCase().trim();
 
   let normalizedRole: UserRole = 'STUDENT';
-  if (rawRole === 'admin') {
+  if (roleOverride) {
+    normalizedRole = roleOverride;
+  } else if (rawRole === 'admin' || isAdminEmail) {
     normalizedRole = 'ADMIN';
   } else if (rawRole === 'hr') {
     normalizedRole = 'HR';
@@ -48,7 +52,7 @@ function mapProfileToUser(profile: any, emailFallback?: string): User {
     normalizedRole = 'STUDENT';
   }
 
-  const defaultAdminId = (profile.email || emailFallback || '').toLowerCase().includes('241fa04154') ? 'teju_admin2' : 'yashu_admin1';
+  const defaultAdminId = email.includes('241fa04154') ? 'teju_admin2' : 'yashu_admin1';
   const resolvedAdminId = normalizedRole === 'ADMIN' ? (profile.admin_id || profile.adminId || defaultAdminId) : undefined;
 
   return {
@@ -129,6 +133,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.warn('Error fetching Supabase session:', sessionError.message);
         }
 
+        // Check currently active stored user session
+        let activeRole: UserRole | undefined = undefined;
+        try {
+          const stored = localStorage.getItem('cf_auth_user');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && parsed.role) activeRole = parsed.role;
+          }
+        } catch {}
+
         if (session?.user && isMounted) {
           let { data: profile, error: profError } = await supabase
             .from('profiles')
@@ -145,7 +159,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               id: session.user.id,
               name: googleName,
               email: session.user.email,
-              role: 'student',
+              role: activeRole ? activeRole.toLowerCase() : 'student',
               avatar: googleAvatar,
               status: 'ACTIVE',
               approval_status: 'approved',
@@ -158,12 +172,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
 
           if (profile && isMounted) {
-            const mapped = mapProfileToUser(profile, session.user.email);
+            const mapped = mapProfileToUser(profile, session.user.email, activeRole);
             // Strict database validation for security
             if (mapped.role === 'ADMIN') {
-              let adminId = (profile.admin_id || '').trim().toLowerCase();
+              let adminId = (profile.admin_id || mapped.adminId || '').trim().toLowerCase();
               if (!isValidAdminId(adminId)) {
-                adminId = 'yashu_admin1';
+                adminId = (session.user.email || '').toLowerCase().includes('241fa04154') ? 'teju_admin2' : 'yashu_admin1';
                 profile.admin_id = adminId;
                 mapped.adminId = adminId;
                 supabase.from('profiles').update({ admin_id: adminId, role: 'admin' }).eq('id', session.user.id);
@@ -206,6 +220,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (session?.user && isMounted) {
         try {
+          // Check currently active stored user session
+          let activeRole: UserRole | undefined = undefined;
+          try {
+            const stored = localStorage.getItem('cf_auth_user');
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (parsed && parsed.role) activeRole = parsed.role;
+            }
+          } catch {}
+
           let { data: profile } = await supabase
             .from('profiles')
             .select('*')
@@ -221,7 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               id: session.user.id,
               name: googleName,
               email: session.user.email,
-              role: 'student',
+              role: activeRole ? activeRole.toLowerCase() : 'student',
               avatar: googleAvatar,
               status: 'ACTIVE',
               approval_status: 'approved',
@@ -234,13 +258,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
 
           if (profile && isMounted) {
-            const mapped = mapProfileToUser(profile, session.user.email);
+            const mapped = mapProfileToUser(profile, session.user.email, activeRole);
             if (mapped.role === 'ADMIN') {
-              const adminId = (profile.admin_id || '').trim().toLowerCase();
+              const adminId = (profile.admin_id || mapped.adminId || '').trim().toLowerCase();
               if (!isValidAdminId(adminId)) {
-                await supabase.auth.signOut();
-                saveUserState(null);
-                return;
+                mapped.adminId = (session.user.email || '').toLowerCase().includes('241fa04154') ? 'teju_admin2' : 'yashu_admin1';
               }
             } else if (mapped.role === 'HR') {
               const approvalStatus = (profile.approval_status || profile.status || profile.hr_status || '').toLowerCase();
@@ -501,9 +523,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // 8. Authentication & Authorization Successful
-      const mappedUser = mapProfileToUser(profile, authData.user.email);
+      const mappedUser = mapProfileToUser(profile, authData.user.email, role);
       mappedUser.role = role;
-      if (role === 'STUDENT') {
+      if (role === 'ADMIN') {
+        const enteredAdminId = (credentials.id || '').trim().toLowerCase();
+        mappedUser.adminId = getCanonicalAdminId(enteredAdminId) || 'yashu_admin1';
+      } else if (role === 'STUDENT') {
         delete (mappedUser as any).adminId;
       }
       saveUserState(mappedUser);
