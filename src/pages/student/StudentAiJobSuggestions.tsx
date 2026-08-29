@@ -14,75 +14,33 @@ import {
   ShieldCheck,
   Filter,
   Layers,
+  Bot,
+  MessageSquare,
 } from 'lucide-react';
+import { StudentAiCareerAgent } from '../../components/student/StudentAiCareerAgent';
 
 export const StudentAiJobSuggestions: React.FC = () => {
-  const { aiJobSuggestions, savedJobIds, toggleSaveJob, jobs = [], studentProfile, showToast } = useData();
+  const { aiJobSuggestions = [], savedJobIds = [], toggleSaveJob, jobs = [], studentProfile, showToast, refreshData } = useData();
   const navigate = useNavigate();
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [minMatchFilter, setMinMatchFilter] = useState<number>(0);
   const [workplaceFilter, setWorkplaceFilter] = useState('ALL');
+  const [showAiChat, setShowAiChat] = useState(false);
 
-  const defaultJobSuggestions = [
-    {
-      id: 'SUG-DEF-1',
-      jobId: 'JOB-101',
-      company: 'TechNova Enterprise',
-      companyLogo: 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=100',
-      role: 'Senior Software Development Engineer (SDE-1)',
-      salary: '24 - 32 LPA',
-      location: 'Bangalore (Hybrid)',
-      workplace: 'Hybrid',
-      matchScore: 94,
-      matchedSkills: ['Python', 'DSA', 'SQL', 'React'],
-      missingSkills: ['Kubernetes'],
-      aiExplanation: `High compatibility with your verified ${studentProfile?.overallSkillScore || 90}% overall technical rating and ${studentProfile?.cgpa || 8.5} CGPA. Strong match for distributed systems and full-stack backend development.`,
-    },
-    {
-      id: 'SUG-DEF-2',
-      jobId: 'JOB-102',
-      company: 'EcoFin Global AI',
-      companyLogo: 'https://images.unsplash.com/photo-1551434678-e076c223a692?w=100',
-      role: 'Machine Learning & Python Analytics Engineer',
-      salary: '20 - 28 LPA',
-      location: 'Hyderabad (Remote)',
-      workplace: 'Remote',
-      matchScore: 91,
-      matchedSkills: ['Python', 'SQL', 'DBMS'],
-      missingSkills: ['PyTorch MLOps'],
-      aiExplanation: `Exceptional alignment with your algorithmic scores in Python and relational databases. Meets all corporate cutoff benchmarks.`,
-    },
-    {
-      id: 'SUG-DEF-3',
-      jobId: 'JOB-103',
-      company: 'CloudScale Networks',
-      companyLogo: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=100',
-      role: 'Full Stack Frontend Architect',
-      salary: '18 - 25 LPA',
-      location: 'Pune (On-site)',
-      workplace: 'On-site',
-      matchScore: 88,
-      matchedSkills: ['React', 'TypeScript', 'DSA'],
-      missingSkills: ['GraphQL Federation'],
-      aiExplanation: `Recommended based on component architecture fluency and data structures speed in recent benchmark tests.`,
-    },
-  ];
-
-  const sourceSuggestions = aiJobSuggestions.length > 0 ? aiJobSuggestions : defaultJobSuggestions;
-
-  const filteredSuggestions = sourceSuggestions.filter((item) => {
+  const filteredSuggestions = aiJobSuggestions.filter((item) => {
     const matchesScore = item.matchScore >= minMatchFilter;
-    const matchesWorkplace = workplaceFilter === 'ALL' || item.workplace.toLowerCase() === workplaceFilter.toLowerCase();
+    const matchesWorkplace = workplaceFilter === 'ALL' || (item.workplace || '').toLowerCase() === workplaceFilter.toLowerCase();
     return matchesScore && matchesWorkplace;
   });
 
-  const handleReAnalyze = () => {
+  const handleReAnalyze = async () => {
     setIsAnalyzing(true);
+    await refreshData();
     setTimeout(() => {
       setIsAnalyzing(false);
-      showToast('AI Neural Re-Analysis Complete', 'Updated compatibility scores based on your latest skill benchmarks.', 'success');
-    }, 900);
+      showToast('AI Neural Re-Analysis Complete', 'Updated compatibility scores based on your latest Supabase profile and jobs.', 'success');
+    }, 600);
   };
 
   return (
@@ -104,6 +62,15 @@ export const StudentAiJobSuggestions: React.FC = () => {
 
         <div className="flex items-center gap-3">
           <button
+            onClick={() => setShowAiChat(!showAiChat)}
+            className={`px-4 py-2 text-xs font-semibold rounded-xl shadow-xs transition-colors flex items-center gap-2 cursor-pointer ${
+              showAiChat ? 'bg-indigo-600 text-white' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
+            }`}
+          >
+            <Bot className="w-3.5 h-3.5" />
+            <span>{showAiChat ? 'Show Job Matches' : '🤖 Open AI Career Agent'}</span>
+          </button>
+          <button
             onClick={handleReAnalyze}
             disabled={isAnalyzing}
             className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
@@ -119,6 +86,13 @@ export const StudentAiJobSuggestions: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* AI Career Agent View Mode */}
+      {showAiChat && (
+        <div className="p-1">
+          <StudentAiCareerAgent onClose={() => setShowAiChat(false)} />
+        </div>
+      )}
 
       {/* Filter Toolbar */}
       <div className="bg-white rounded-2xl p-4 border border-[#E2E8F0] shadow-xs flex flex-wrap items-center justify-between gap-4">

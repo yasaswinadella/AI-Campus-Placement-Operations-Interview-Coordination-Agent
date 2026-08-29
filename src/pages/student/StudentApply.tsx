@@ -21,34 +21,56 @@ export const StudentApply: React.FC = () => {
   const safeJobs = jobs || [];
   const safeApps = applications || [];
 
-  const defaultJob = {
-    id: 'JOB-101',
-    title: 'Senior Software Development Engineer (SDE-1)',
-    company: 'TechNova Enterprise',
-    companyLogo: 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=100',
-    salary: '24 - 32 LPA',
-    location: 'Bangalore (Hybrid)',
-    minCgpa: 7.5,
-    skills: ['Python', 'DSA', 'SQL', 'React'],
-    type: 'Full-time',
-    description: 'Core backend engineering and distributed platform services.',
-    status: 'ACTIVE',
-  };
-
-  const defaultJobId = location.state?.jobId || safeJobs[0]?.id || 'JOB-101';
+  const defaultJobId = location.state?.jobId || safeJobs[0]?.id || '';
   const [jobId, setJobId] = useState(defaultJobId);
   const [coverLetter, setCoverLetter] = useState(
-    'I am excited to submit my candidacy for this position. My hands-on experience building distributed systems, full-stack React web apps, and algorithmic pipelines makes me a strong fit for your team.'
+    'I am excited to submit my candidacy for this position. My verified coursework, technical test benchmarks, and software projects make me a strong candidate for your team.'
   );
-  const [resumeFileName, setResumeFileName] = useState(studentProfile?.resumeFileName || 'Student_Resume_2026.pdf');
-  const [portfolioUrl, setPortfolioUrl] = useState(studentProfile?.portfolio || 'https://github.com/student');
-  const [linkedinUrl, setLinkedinUrl] = useState(studentProfile?.linkedin || 'https://linkedin.com/in/student');
-  const [notes, setNotes] = useState('Available for immediate virtual technical rounds and campus interviews.');
+  const [resumeFileName, setResumeFileName] = useState(studentProfile?.resumeFileName || 'Student_Resume.pdf');
+  const [portfolioUrl, setPortfolioUrl] = useState(studentProfile?.portfolio || '');
+  const [linkedinUrl, setLinkedinUrl] = useState(studentProfile?.linkedin || '');
+  const [notes, setNotes] = useState('Available for immediate virtual technical rounds and campus recruitment steps.');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const currentJob = safeJobs.find((j) => j && j.id === jobId) || safeJobs[0] || defaultJob;
+  const currentJob = safeJobs.find((j) => j && j.id === jobId) || safeJobs[0];
   const sId = studentProfile?.id || '';
-  const alreadyApplied = safeApps.some((a) => a && a.jobId === jobId && (a.studentId === sId || !sId));
+  const alreadyApplied = safeApps.some((a) => a && a.jobId === jobId && (a.studentId === sId || a.studentEmail === studentProfile?.email));
+
+  if (!currentJob || safeJobs.length === 0) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-200">
+        <div>
+          <button
+            onClick={() => navigate('/student/jobs')}
+            className="text-xs font-semibold text-[#64748B] hover:text-[#0F172A] flex items-center gap-1 mb-2 cursor-pointer"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Back to Jobs
+          </button>
+          <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">
+            Submit Job Application
+          </h1>
+          <p className="text-xs text-[#64748B] mt-1">
+            Apply directly to verified corporate placement drives.
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-12 text-center border border-[#E2E8F0] shadow-xs space-y-3">
+          <Briefcase className="w-12 h-12 text-slate-300 mx-auto" />
+          <h3 className="text-base font-bold text-[#0F172A]">No Target Job Selected</h3>
+          <p className="text-xs text-[#64748B] max-w-sm mx-auto">
+            Please select an active vacancy from the Jobs Portal before submitting an application.
+          </p>
+          <button
+            onClick={() => navigate('/student/jobs')}
+            className="px-4 py-2 bg-[#4F46E5] hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs cursor-pointer"
+          >
+            Browse Active Jobs
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

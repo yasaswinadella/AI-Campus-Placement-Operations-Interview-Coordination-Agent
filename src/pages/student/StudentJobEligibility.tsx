@@ -20,36 +20,57 @@ export const StudentJobEligibility: React.FC = () => {
   const navigate = useNavigate();
 
   const safeJobs = jobs || [];
-
-  const defaultJob = {
-    id: 'JOB-DEF',
-    title: 'Senior Software Development Engineer (SDE-1)',
-    company: 'TechNova Enterprise',
-    companyLogo: 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=100',
-    salary: '24 - 32 LPA',
-    location: 'Bangalore (Hybrid)',
-    minCgpa: 7.5,
-    skills: ['Python', 'DSA', 'SQL', 'React'],
-    type: 'Full-time',
-    description: 'Core backend engineering and distributed platform services.',
-    status: 'ACTIVE',
-  };
-
-  const selectedJobId = location.state?.jobId || safeJobs[0]?.id || 'JOB-DEF';
+  const selectedJobId = location.state?.jobId || safeJobs[0]?.id || '';
   const [currentJobId, setCurrentJobId] = useState(selectedJobId);
 
-  const currentJob = safeJobs.find((j) => j && j.id === currentJobId) || safeJobs[0] || defaultJob;
+  const currentJob = safeJobs.find((j) => j && j.id === currentJobId) || safeJobs[0];
+
+  if (!currentJob || safeJobs.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200">
+        <div>
+          <button
+            onClick={() => navigate('/student/jobs')}
+            className="text-xs font-semibold text-[#64748B] hover:text-[#0F172A] flex items-center gap-1 mb-2 cursor-pointer"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Back to Jobs Directory
+          </button>
+          <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">
+            Job Eligibility & Profile Match Calculator
+          </h1>
+          <p className="text-xs text-[#64748B] mt-1">
+            Algorithmic verification against corporate cutoff criteria and skill benchmarks.
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-12 text-center border border-[#E2E8F0] shadow-xs space-y-3">
+          <Briefcase className="w-12 h-12 text-slate-300 mx-auto" />
+          <h3 className="text-base font-bold text-[#0F172A]">No Jobs Available to Evaluate</h3>
+          <p className="text-xs text-[#64748B] max-w-sm mx-auto">
+            There are currently no active corporate job postings in the database. When partner employers post openings, you can test your eligibility here.
+          </p>
+          <button
+            onClick={() => navigate('/student/jobs')}
+            className="px-4 py-2 bg-[#4F46E5] hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs cursor-pointer"
+          >
+            Browse Jobs Portal
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Eligibility evaluation
-  const studentCgpa = studentProfile?.cgpa || 8.5;
-  const isCgpaQualified = studentCgpa >= (currentJob.minCgpa || 7.0);
+  const studentCgpa = studentProfile?.cgpa || 0;
+  const isCgpaQualified = studentCgpa >= (currentJob.minCgpa || 0);
   const isBatchQualified = (studentProfile?.graduationYear || 2026) >= 2025;
   const isBacklogQualified = true; // 0 backlogs
   const isOverallQualified = isCgpaQualified && isBatchQualified && isBacklogQualified;
 
   const matchPercent = Math.min(
     98,
-    Math.max(65, Math.round((studentProfile?.overallSkillScore || 85) * 0.9 + (isCgpaQualified ? 10 : -15)))
+    Math.max(40, Math.round((studentProfile?.overallSkillScore || 70) * 0.8 + (isCgpaQualified ? 15 : -10)))
   );
 
   return (
