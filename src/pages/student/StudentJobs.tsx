@@ -16,16 +16,26 @@ import {
   Building2,
   Megaphone,
   Sparkles,
+  Globe,
+  ExternalLink,
 } from 'lucide-react';
 
 export const StudentJobs: React.FC = () => {
-  const { jobs, placementDrives, registerForPlacementDrive, savedJobIds, toggleSaveJob, studentProfile } = useData();
+  const { jobs = [], companies = [], placementDrives = [], registerForPlacementDrive, savedJobIds = [], toggleSaveJob, studentProfile } = useData();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<'ALL' | 'SAVED' | 'CAMPUS_DRIVES'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedWorkplace, setSelectedWorkplace] = useState<string>('ALL');
   const [selectedType, setSelectedType] = useState<string>('ALL');
+
+  const formatUrl = (url?: string) => {
+    if (!url) return '';
+    const trimmed = url.trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    return `https://${trimmed}`;
+  };
 
   const filteredJobs = jobs.filter((j) => {
     if (activeTab === 'SAVED' && !savedJobIds.includes(j.id)) return false;
@@ -244,6 +254,12 @@ export const StudentJobs: React.FC = () => {
               {filteredJobs.map((job) => {
                 const isSaved = savedJobIds.includes(job.id);
                 const isEligible = studentProfile.cgpa >= job.minCgpa;
+                const matchingCompany = companies.find(
+                  (c) =>
+                    (c.companyId && c.companyId.toUpperCase() === (job.companyId || '').toUpperCase()) ||
+                    (c.name && c.name.toLowerCase() === (job.company || '').toLowerCase())
+                );
+                const realJobsLink = formatUrl(matchingCompany?.website || (job as any).website);
 
                 return (
                   <div
@@ -301,12 +317,26 @@ export const StudentJobs: React.FC = () => {
                           </span>
                         ))}
                       </div>
+                      {realJobsLink && (
+                        <div className="pt-1">
+                          <a
+                            href={realJobsLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100/80 px-2.5 py-1 rounded-lg border border-indigo-100 transition-colors"
+                          >
+                            <Globe className="w-3.5 h-3.5 text-[#4F46E5]" />
+                            <span>View Live Careers & Real Roles</span>
+                            <ExternalLink className="w-3 h-3 text-indigo-400" />
+                          </a>
+                        </div>
+                      )}
                     </div>
 
                     <div className="pt-4 border-t border-[#E2E8F0] flex items-center justify-between gap-3">
                       <button
                         onClick={() => navigate('/student/job-eligibility', { state: { jobId: job.id } })}
-                        className="text-xs font-semibold text-[#4F46E5] hover:underline flex items-center gap-1"
+                        className="text-xs font-semibold text-[#4F46E5] hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <ShieldCheck className="w-3.5 h-3.5" />
                         <span>Check Match</span>
@@ -314,7 +344,7 @@ export const StudentJobs: React.FC = () => {
 
                       <button
                         onClick={() => navigate('/student/apply', { state: { jobId: job.id } })}
-                        className="px-5 py-2 bg-[#4F46E5] hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+                        className="px-5 py-2 bg-[#4F46E5] hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
                       >
                         <span>Apply</span>
                         <ArrowRight className="w-3.5 h-3.5" />

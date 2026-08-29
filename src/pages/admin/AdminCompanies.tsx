@@ -61,10 +61,19 @@ export const AdminCompanies: React.FC = () => {
   const [logo, setLogo] = useState('https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=120&auto=format&fit=crop&q=80');
   const [industry, setIndustry] = useState('Enterprise Cloud & Software');
   const [location, setLocation] = useState('Bangalore / Hyderabad, India');
-  const [website, setWebsite] = useState('https://example.com');
+  const [website, setWebsite] = useState('');
   const [contactEmail, setContactEmail] = useState('campus-hiring@example.com');
   const [tier, setTier] = useState<'Tier-1' | 'Tier-2' | 'Super Dream'>('Super Dream');
   const [description, setDescription] = useState('');
+
+  // Helper to format any URL
+  const formatUrl = (url?: string) => {
+    if (!url) return '';
+    const trimmed = url.trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    return `https://${trimmed}`;
+  };
 
   // Add HR Account directly Modal
   const [isAddHrOpen, setIsAddHrOpen] = useState(false);
@@ -92,19 +101,21 @@ export const AdminCompanies: React.FC = () => {
     const nextId = generateNextCompanyId();
     setCustomCompId(nextId);
     setName('');
+    setWebsite('');
     setDescription('');
     setIsAddOpen(true);
   };
 
   const handleAddCompanySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const formattedWebsite = formatUrl(website);
     const result = await addCompany({
       companyId: customCompId.trim().toUpperCase(),
       name: name.trim(),
       logo: logo.trim() || 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=120&auto=format&fit=crop&q=80',
       industry,
       location,
-      website,
+      website: formattedWebsite,
       contactEmail,
       tier,
       description: description.trim() || `${name} campus recruitment partner.`,
@@ -736,15 +747,25 @@ export const AdminCompanies: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#0F172A] mb-1">Official Website URL</label>
-            <input
-              type="url"
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              placeholder="https://company.com"
-              required
-              className="w-full px-3 py-2 bg-white rounded-lg border border-[#E2E8F0] text-xs text-[#0F172A] focus:outline-none"
-            />
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-[#0F172A]">
+                Official Website / Careers & Jobs Link
+              </label>
+              <span className="text-[10px] text-indigo-600 font-medium">Link to real roles or live jobs</span>
+            </div>
+            <div className="relative">
+              <Globe className="w-4 h-4 text-[#64748B] absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                placeholder="e.g. https://careers.google.com or https://company.com/jobs"
+                className="w-full pl-9 pr-3 py-2 bg-white rounded-lg border border-[#E2E8F0] text-xs text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              />
+            </div>
+            <p className="text-[10px] text-slate-500 mt-1">
+              Provide any official website or direct careers portal URL where real available roles and jobs can be viewed.
+            </p>
           </div>
 
           <div>
