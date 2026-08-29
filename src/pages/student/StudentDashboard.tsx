@@ -12,10 +12,11 @@ import {
 } from 'lucide-react';
 
 export const StudentDashboard: React.FC = () => {
-  const { studentProfile, applications = [], interviews = [], aiJobSuggestions = [] } = useData();
+  const { studentProfile, applications = [], interviews = [], aiJobSuggestions = [], studentAssessmentResults = [] } = useData();
   const navigate = useNavigate();
 
   const sId = studentProfile?.id || '';
+  const sEmail = (studentProfile?.email || '').toLowerCase();
   const safeApps = applications || [];
   const safeInterviews = interviews || [];
 
@@ -25,8 +26,45 @@ export const StudentDashboard: React.FC = () => {
   );
   const shortlistedCount = activeApplications.filter((a) => a && (a.status === 'SHORTLISTED' || a.status === 'SELECTED' || a.status === 'OFFERED')).length;
 
-  const defaultSkills: { [key: string]: number } = { Python: 0, DSA: 0, SQL: 0, React: 0, Java: 0, DBMS: 0 };
-  const currentSkills = (studentProfile?.skills && Object.keys(studentProfile.skills).length > 0) ? studentProfile.skills : defaultSkills;
+  // Real assessment results matching this candidate
+  const myResults = (studentAssessmentResults || []).filter(
+    (r) => (sId && r.studentId === sId) || (sEmail && (r.studentEmail || '').toLowerCase() === sEmail)
+  );
+
+  const realSkillsMap: { [key: string]: number } = {
+    Python: 0,
+    DSA: 0,
+    SQL: 0,
+    React: 0,
+    Java: 0,
+    DBMS: 0,
+  };
+
+  // 1. Populate from studentProfile.skills
+  if (studentProfile?.skills) {
+    Object.entries(studentProfile.skills).forEach(([k, v]) => {
+      const num = Number(v);
+      if (!isNaN(num) && num > 0) {
+        realSkillsMap[k] = num;
+      }
+    });
+  }
+
+  // 2. Populate / override with verified assessment results
+  myResults.forEach((r) => {
+    if (r.skill) {
+      const matchingKey = Object.keys(realSkillsMap).find((k) => k.toLowerCase() === r.skill.toLowerCase()) || r.skill;
+      realSkillsMap[matchingKey] = r.percentage;
+    }
+  });
+
+  const assessedValues = Object.values(realSkillsMap).filter((v) => v > 0);
+  const realOverallScore =
+    assessedValues.length > 0
+      ? Math.round(assessedValues.reduce((a, b) => a + b, 0) / assessedValues.length)
+      : (studentProfile?.overallSkillScore || 0);
+
+  const currentSkills = realSkillsMap;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -56,7 +94,7 @@ export const StudentDashboard: React.FC = () => {
 
         <div className="bg-white p-5 rounded-xl border border-[#E2E8F0] shadow-sm">
           <p className="text-[#64748B] text-xs font-medium uppercase tracking-wider">Verified Skill Score</p>
-          <h3 className="text-2xl font-bold mt-1 text-[#4F46E5]">{studentProfile?.overallSkillScore || 0}%</h3>
+          <h3 className="text-2xl font-bold mt-1 text-[#4F46E5]">{realOverallScore}%</h3>
           <p className="text-[#64748B] text-[10px] font-medium mt-2">Evaluated via AI proctoring</p>
         </div>
       </div>

@@ -2411,13 +2411,43 @@ export const dbService = {
       adminNotes: violationsCount > 0 ? `Completed with ${violationsCount} security focus warning(s).` : 'Evaluated automatically via CareerFlow AI Assessment Engine.',
     };
 
-    // Remove active attempt from storage
+    // 1. Remove active attempt from storage and add to history
     try {
       localStorage.removeItem(`cf_active_attempt_${attempt.studentId}_${attempt.skill.toLowerCase()}`);
       const historyKey = `cf_assessment_history_${attempt.studentId}`;
       const histStored = localStorage.getItem(historyKey);
       const histArr = histStored ? JSON.parse(histStored) : [];
       localStorage.setItem(historyKey, JSON.stringify([result, ...histArr]));
+
+      // 2. Automatically update student profile with real tested skill score
+      const registered = JSON.parse(localStorage.getItem('cf_registered_students') || '[]');
+      const sIdx = registered.findIndex((s: any) => s && (s.id === attempt.studentId || (s.email || '').toLowerCase() === (attempt.studentEmail || '').toLowerCase()));
+      if (sIdx >= 0) {
+        const student = registered[sIdx];
+        const studentSkills = student.skills || {};
+        studentSkills[attempt.skill] = percentage;
+
+        const valArr = Object.values(studentSkills).map(Number).filter((v) => !isNaN(v) && v > 0);
+        const newOverall = valArr.length > 0 ? Math.round(valArr.reduce((a, b) => a + b, 0) / valArr.length) : percentage;
+
+        student.skills = studentSkills;
+        student.overallSkillScore = newOverall;
+        student.careerReadiness = Math.min(100, Math.round(newOverall * 0.95 + 5));
+        registered[sIdx] = student;
+        localStorage.setItem('cf_registered_students', JSON.stringify(registered));
+
+        // Also update active session student profile
+        const activeProfileStored = localStorage.getItem('cf_student_profile');
+        if (activeProfileStored) {
+          const activeProf = JSON.parse(activeProfileStored);
+          if (activeProf.id === attempt.studentId || (activeProf.email || '').toLowerCase() === (attempt.studentEmail || '').toLowerCase()) {
+            activeProf.skills = studentSkills;
+            activeProf.overallSkillScore = newOverall;
+            activeProf.careerReadiness = student.careerReadiness;
+            localStorage.setItem('cf_student_profile', JSON.stringify(activeProf));
+          }
+        }
+      }
     } catch {}
 
     // Save directly to Supabase
@@ -2425,6 +2455,23 @@ export const dbService = {
       try {
         const dbPayload = mapResultToDb(result);
         const { data, error } = await supabase.from('student_assessment_results').insert(dbPayload).select().single();
+
+        // Update profiles table in Supabase
+        try {
+          const { data: prof } = await supabase.from('profiles').select('skills').eq('id', attempt.studentId).single();
+          const currentSkills = prof?.skills || {};
+          currentSkills[attempt.skill] = percentage;
+          const valArr = Object.values(currentSkills).map(Number).filter((v) => !isNaN(v) && v > 0);
+          const newOverall = valArr.length > 0 ? Math.round(valArr.reduce((a, b) => a + b, 0) / valArr.length) : percentage;
+
+          await supabase.from('profiles').update({
+            skills: currentSkills,
+            overall_skill_score: newOverall,
+            career_readiness: Math.min(100, Math.round(newOverall * 0.95 + 5)),
+            updated_at: new Date().toISOString(),
+          }).eq('id', attempt.studentId);
+        } catch {}
+
         if (data) return mapResultFromDb(data);
       } catch (err) {
         console.warn('Supabase completeSelfAssessmentAttempt warning:', err);
