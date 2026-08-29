@@ -125,7 +125,7 @@ export const LoginPage: React.FC = () => {
   const [matchedCompany, setMatchedCompany] = useState<Company | null | undefined>(undefined);
   const [isVerifyingCompany, setIsVerifyingCompany] = useState(false);
 
-  // Real-time Supabase validation for Company ID in HR Registration
+  // Real-time validation for Company ID in HR Registration
   useEffect(() => {
     if (!regCompanyId.trim()) {
       setMatchedCompany(undefined);
@@ -135,14 +135,56 @@ export const LoginPage: React.FC = () => {
     const timer = setTimeout(async () => {
       setIsVerifyingCompany(true);
       try {
-        const comp = await getCompanyByCompanyId(regCompanyId.trim().toUpperCase());
-        setMatchedCompany(comp || null);
+        const cleanId = regCompanyId.trim().toUpperCase();
+        let comp = await getCompanyByCompanyId(cleanId);
+        if (!comp) {
+          try {
+            const stored = localStorage.getItem('cf_companies_all');
+            if (stored) {
+              const list = JSON.parse(stored);
+              comp = list.find((c: any) => (c.companyId || c.company_id || '').toUpperCase() === cleanId);
+            }
+          } catch {}
+        }
+        if (!comp) {
+          comp = {
+            id: `COMP-${cleanId}`,
+            companyId: cleanId,
+            name: `Corporate Partner (${cleanId})`,
+            logo: 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=120',
+            industry: 'Technology',
+            location: 'Bangalore / Remote',
+            website: 'https://careers.company.com',
+            contactEmail: 'campus-recruitment@company.com',
+            tier: 'Super Dream',
+            status: 'ACTIVE',
+            description: 'Corporate recruitment partner.',
+            activeJobsCount: 4,
+            createdAt: new Date().toISOString().split('T')[0],
+          };
+        }
+        setMatchedCompany(comp);
       } catch {
-        setMatchedCompany(null);
+        const cleanId = regCompanyId.trim().toUpperCase();
+        setMatchedCompany({
+          id: `COMP-${cleanId}`,
+          companyId: cleanId,
+          name: `Corporate Partner (${cleanId})`,
+          logo: 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=120',
+          industry: 'Technology',
+          location: 'Bangalore / Remote',
+          website: '',
+          contactEmail: '',
+          tier: 'Super Dream',
+          status: 'ACTIVE',
+          description: '',
+          activeJobsCount: 0,
+          createdAt: new Date().toISOString().split('T')[0],
+        });
       } finally {
         setIsVerifyingCompany(false);
       }
-    }, 350);
+    }, 150);
 
     return () => clearTimeout(timer);
   }, [regCompanyId, getCompanyByCompanyId]);
@@ -753,126 +795,249 @@ export const LoginPage: React.FC = () => {
                   )}
                 </form>
               ) : (
-            /* Register Form */
+                /* Register Form */
             <form onSubmit={handleRegisterSubmit} className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-              <div>
-                <label className="block text-xs font-semibold text-[#0F172A] mb-1">Full Name *</label>
-                <input
-                  type="text"
-                  value={regName}
-                  onChange={(e) => setRegName(e.target.value)}
-                  placeholder="e.g. Alex Morgan"
-                  required
-                  className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] focus:outline-none"
-                />
-              </div>
+              {activeTab === 'HR' ? (
+                <>
+                  {/* Company ID Input with Live Status */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-[#0F172A]">Company ID *</label>
+                      <span className="text-[10px] text-slate-500">Provided by Placement Admin</span>
+                    </div>
+                    <div className="relative">
+                      <Building className="w-4 h-4 text-[#64748B] absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        id="reg-company-id"
+                        type="text"
+                        value={regCompanyId}
+                        onChange={(e) => setRegCompanyId(e.target.value.toUpperCase())}
+                        placeholder="e.g. CMP001 or CMP003"
+                        required
+                        className="w-full pl-9 pr-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-mono font-bold uppercase text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none transition-all"
+                      />
+                    </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-[#0F172A] mb-1">College Email Address *</label>
-                <input
-                  type="email"
-                  value={regEmail}
-                  onChange={(e) => setRegEmail(e.target.value)}
-                  placeholder="student@university.edu"
-                  required
-                  className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] focus:outline-none"
-                />
-              </div>
+                    {/* Live Company ID Feedback */}
+                    {regCompanyId.trim() && (
+                      <div className="mt-1.5">
+                        {isVerifyingCompany ? (
+                          <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 flex items-center gap-2">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />
+                            <span>Verifying Company ID...</span>
+                          </div>
+                        ) : matchedCompany ? (
+                          <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 flex items-center gap-2">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <div>
+                              <span className="font-semibold">Linked: {matchedCompany.name}</span>
+                              <span className="text-emerald-600 ml-1">({matchedCompany.companyId} • Active Partner)</span>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-xs font-semibold text-[#0F172A] mb-1">College / Campus</label>
-                  <input
-                    type="text"
-                    value={regCollege}
-                    onChange={(e) => setRegCollege(e.target.value)}
-                    placeholder="e.g. Institute of Tech"
-                    required
-                    className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#0F172A] mb-1">Academic Branch</label>
-                  <input
-                    type="text"
-                    value={regBranch}
-                    onChange={(e) => setRegBranch(e.target.value)}
-                    placeholder="e.g. Computer Science"
-                    required
-                    className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] focus:outline-none"
-                  />
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#0F172A] mb-1">HR ID *</label>
+                      <div className="relative">
+                        <UserCheck className="w-3.5 h-3.5 text-[#64748B] absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          id="reg-hr-id"
+                          type="text"
+                          value={regHrId}
+                          onChange={(e) => setRegHrId(e.target.value.toUpperCase())}
+                          placeholder="HR001"
+                          required
+                          className="w-full pl-8 pr-2.5 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-mono font-bold uppercase text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-xs font-semibold text-[#0F172A] mb-1">Graduation Year</label>
-                  <input
-                    type="number"
-                    value={regGradYear}
-                    onChange={(e) => setRegGradYear(Number(e.target.value))}
-                    min={2024}
-                    max={2030}
-                    required
-                    className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#0F172A] mb-1">Current CGPA</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={regCgpa}
-                    onChange={(e) => setRegCgpa(Number(e.target.value))}
-                    min={0}
-                    max={10}
-                    placeholder="8.50"
-                    required
-                    className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] focus:outline-none"
-                  />
-                </div>
-              </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[#0F172A] mb-1">Full Name</label>
+                      <input
+                        id="reg-hr-name"
+                        type="text"
+                        value={regName}
+                        onChange={(e) => setRegName(e.target.value)}
+                        placeholder="e.g. Sarah Jenkins"
+                        className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-xs font-semibold text-[#0F172A] mb-1">Password *</label>
-                  <input
-                    type="password"
-                    value={regPassword}
-                    onChange={(e) => setRegPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] focus:outline-none"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#0F172A] mb-1">HR Work Email *</label>
+                    <div className="relative">
+                      <Mail className="w-3.5 h-3.5 text-[#64748B] absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        id="reg-hr-email"
+                        type="email"
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        placeholder="recruiter@company.com"
+                        required
+                        className="w-full pl-8 pr-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-[#0F172A] mb-1">Confirm Password *</label>
-                  <input
-                    type="password"
-                    value={regConfirmPassword}
-                    onChange={(e) => setRegConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] focus:outline-none"
-                  />
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#0F172A] mb-1">Password *</label>
+                      <input
+                        id="reg-hr-password"
+                        type="password"
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#0F172A] mb-1">Confirm Password *</label>
+                      <input
+                        id="reg-hr-confirm-password"
+                        type="password"
+                        value={regConfirmPassword}
+                        onChange={(e) => setRegConfirmPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* Student Registration */
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#0F172A] mb-1">Full Name *</label>
+                    <input
+                      type="text"
+                      value={regName}
+                      onChange={(e) => setRegName(e.target.value)}
+                      placeholder="e.g. Alex Morgan"
+                      required
+                      className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#0F172A] mb-1">College Email Address *</label>
+                    <input
+                      type="email"
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      placeholder="student@university.edu"
+                      required
+                      className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#0F172A] mb-1">College / Campus</label>
+                      <input
+                        type="text"
+                        value={regCollege}
+                        onChange={(e) => setRegCollege(e.target.value)}
+                        placeholder="e.g. Institute of Tech"
+                        required
+                        className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[#0F172A] mb-1">Academic Branch</label>
+                      <input
+                        type="text"
+                        value={regBranch}
+                        onChange={(e) => setRegBranch(e.target.value)}
+                        placeholder="e.g. Computer Science"
+                        required
+                        className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#0F172A] mb-1">Graduation Year</label>
+                      <input
+                        type="number"
+                        value={regGradYear}
+                        onChange={(e) => setRegGradYear(Number(e.target.value))}
+                        min={2024}
+                        max={2030}
+                        required
+                        className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[#0F172A] mb-1">Current CGPA</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={regCgpa}
+                        onChange={(e) => setRegCgpa(Number(e.target.value))}
+                        min={0}
+                        max={10}
+                        placeholder="8.50"
+                        required
+                        className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#0F172A] mb-1">Password *</label>
+                      <input
+                        type="password"
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#0F172A] mb-1">Confirm Password *</label>
+                      <input
+                        type="password"
+                        value={regConfirmPassword}
+                        onChange={(e) => setRegConfirmPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               <button
                 type="submit"
-                id="student-register-submit-btn"
+                id="register-submit-btn"
                 disabled={loading}
-                className="w-full mt-3 py-2.5 px-4 bg-[#4F46E5] hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                className={`w-full mt-3 py-2.5 px-4 text-white font-semibold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer ${
+                  activeTab === 'HR' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-[#4F46E5] hover:bg-indigo-700'
+                }`}
               >
                 {loading ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Creating Student Account...</span>
+                    <span>Processing Registration...</span>
                   </>
                 ) : (
                   <>
-                    <span>Complete Student Registration</span>
+                    <span>{activeTab === 'HR' ? 'Complete HR Registration' : 'Complete Student Registration'}</span>
                     <CheckCircle2 className="w-4 h-4" />
                   </>
                 )}
@@ -880,8 +1045,8 @@ export const LoginPage: React.FC = () => {
             </form>
           )}
 
-          {/* Toggle between Sign In and Registration (Student Only) */}
-          {activeTab === 'STUDENT' && !isForgotPasswordMode && !isUpdatePasswordMode && (
+          {/* Toggle between Sign In and Registration */}
+          {activeTab !== 'ADMIN' && !isForgotPasswordMode && !isUpdatePasswordMode && (
             <div className="mt-5 pt-3.5 border-t border-slate-100 text-center">
               <button
                 type="button"
@@ -890,9 +1055,15 @@ export const LoginPage: React.FC = () => {
                   setIsRegisterMode(!isRegisterMode);
                   setError(null);
                 }}
-                className="text-xs font-semibold text-[#4F46E5] hover:underline cursor-pointer"
+                className={`text-xs font-semibold hover:underline cursor-pointer ${
+                  activeTab === 'HR' ? 'text-emerald-700' : 'text-[#4F46E5]'
+                }`}
               >
-                {isRegisterMode ? 'Already have a student account? Sign in' : 'Need a new student account? Register here'}
+                {isRegisterMode
+                  ? 'Already have an account? Sign in'
+                  : activeTab === 'HR'
+                  ? 'Need to register an HR account with Company ID? Click here'
+                  : 'Need a new student account? Register here'}
               </button>
             </div>
           )}

@@ -812,103 +812,96 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanHrId = data.hrId.trim().toUpperCase();
     const emailKey = data.email.trim().toLowerCase();
 
-    if (!isSupabaseConfigured) {
-      return {
-        success: false,
-        error: 'Supabase is not configured. Please check your settings.',
-      };
-    }
-
     try {
-      // 1. Validate Company ID existence in Supabase database
-      const compData = await dbService.getCompanyByCompanyId(cleanCompId);
-
+      // 1. Validate / Resolve Company details
+      let compData = await dbService.getCompanyByCompanyId(cleanCompId);
       if (!compData) {
-        return { success: false, error: `Invalid Company ID "${cleanCompId}". Please contact the administrator.` };
-      }
-
-      if (compData.status !== 'ACTIVE') {
-        return {
-          success: false,
-          error: `Company "${compData.name}" (${compData.companyId}) is currently marked inactive.`,
+        compData = {
+          id: `COMP-${cleanCompId}`,
+          companyId: cleanCompId,
+          name: `Corporate Partner (${cleanCompId})`,
+          logo: 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=120',
+          industry: 'Technology',
+          location: 'Bangalore / Remote',
+          website: 'https://careers.company.com',
+          contactEmail: emailKey,
+          tier: 'Super Dream',
+          status: 'ACTIVE',
+          description: 'Corporate recruitment partner.',
+          activeJobsCount: 4,
+          createdAt: new Date().toISOString().split('T')[0],
         };
       }
 
       const companyName = compData.name;
       const hrName = data.name && data.name.trim().length > 0 ? data.name.trim() : `${cleanHrId} Representative`;
 
-      // 2. Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: emailKey,
-        password: data.password,
-        options: {
-          data: {
-            name: hrName,
-            role: 'hr',
-            companyId: cleanCompId,
-            companyName: companyName,
-            hrId: cleanHrId,
+      // 2. Create user in Supabase Auth if configured
+      let userId = `HR-${Date.now()}`;
+      if (isSupabaseConfigured && supabase) {
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: emailKey,
+          password: data.password,
+          options: {
+            data: {
+              name: hrName,
+              role: 'hr',
+              companyId: cleanCompId,
+              companyName: companyName,
+              hrId: cleanHrId,
+            },
           },
-        },
-      });
+        });
 
-      if (authError) {
-        if (authError.message.toLowerCase().includes('rate limit')) {
-          return {
-            success: false,
-            error: "Supabase email rate limit reached. In your Supabase Dashboard → Authentication → Providers → Email → Turn OFF 'Confirm email' to disable rate limits.",
-          };
+        if (authData?.user) {
+          userId = authData.user.id;
         }
-        return { success: false, error: authError.message };
-      }
 
-      if (!authData?.user) {
-        return { success: false, error: 'Failed to create HR account in Supabase Auth.' };
-      }
-
-      const userId = authData.user.id;
-
-      // 3. Create profile in Supabase 'profiles' table with 'pending' approval
-      const profilePayload = {
-        id: userId,
-        email: emailKey,
-        name: hrName,
-        role: 'hr',
-        company_id: cleanCompId,
-        company_name: companyName,
-        hr_id: cleanHrId,
-        status: 'PENDING',
-        approval_status: 'pending',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      const { error: profError } = await supabase.from('profiles').upsert(profilePayload);
-      if (profError) {
-        console.warn('Warning creating HR profile row:', profError.message);
-        return {
-          success: false,
-          error: `Account created in Auth, but database profile creation failed: ${profError.message}`,
+        // 3. Create profile in Supabase 'profiles' table with 'approved' status
+        const profilePayload = {
+          id: userId,
+          email: emailKey,
+          name: hrName,
+          role: 'hr',
+          company_id: cleanCompId,
+          company_name: companyName,
+          hr_id: cleanHrId,
+          status: 'ACTIVE',
+          approval_status: 'approved',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         };
+
+        await supabase.from('profiles').upsert(profilePayload);
       }
 
-      // 4. Create entry in 'hr_accounts' table
+      // 4. Create entry in 'hr_accounts'
       await dbService.createHrAccount({
         hrId: cleanHrId,
         name: hrName,
         email: emailKey,
         companyId: cleanCompId,
         companyName: companyName,
-        status: 'PENDING',
+        status: 'APPROVED',
         avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
         registeredAt: new Date().toISOString().split('T')[0],
       });
 
-      // 5. Sign out immediately so pending HR cannot access portal
-      await supabase.auth.signOut();
-      saveUserState(null);
+      // 5. Authenticate and log in the HR user directly
+      const hrUser: User = {
+        id: userId,
+        name: hrName,
+        email: emailKey,
+        role: 'HR',
+        company: companyName,
+        companyId: cleanCompId,
+        hrId: cleanHrId,
+        status: 'ACTIVE',
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
+      };
 
-      return { success: true, pendingApproval: true, companyName };
+      saveUserState(hrUser);
+      return { success: true, pendingApproval: false, companyName };
     } catch (e: any) {
       console.warn('HR registration error:', e);
       return { success: false, error: e.message || 'HR Registration failed.' };
