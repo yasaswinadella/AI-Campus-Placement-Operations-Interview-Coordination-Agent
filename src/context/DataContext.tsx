@@ -40,8 +40,72 @@ import {
   INITIAL_APPLICATIONS,
   INITIAL_INTERVIEWS,
 } from '../data/mockData';
+import { KAGGLE_CAMPUS_JOBS_DATASET } from '../data/kaggleJobsDataset';
 import { dbService } from '../services/db';
 import { useAuth } from './AuthContext';
+
+export const REALISTIC_SAMPLE_INTERVIEWS: Interview[] = [
+  {
+    id: 'INT-KAG-001',
+    applicationId: 'APP-KAG-001',
+    jobId: 'KAG-JOB-001',
+    jobTitle: 'Software Development Engineer - I (Backend Systems)',
+    company: 'Google',
+    companyLogo: 'https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=120',
+    studentId: 'STUDENT-ACTIVE',
+    studentName: 'Student Candidate',
+    round: 'Technical',
+    format: 'Virtual',
+    date: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0],
+    time: '10:00 AM - 11:15 AM',
+    meetingLink: 'https://meet.google.com/xyz-placement-tech',
+    status: 'SCHEDULED',
+    interviewers: ['Senior Staff Engineer @ Google Cloud'],
+    instructions: 'Prepare live coding environment in Python/Java and architecture whiteboard.',
+    feedback: '',
+    rating: 0,
+  },
+  {
+    id: 'INT-KAG-002',
+    applicationId: 'APP-KAG-002',
+    jobId: 'KAG-JOB-002',
+    jobTitle: 'Machine Learning & AI Platform Engineer',
+    company: 'Microsoft',
+    companyLogo: 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=120',
+    studentId: 'STUDENT-ACTIVE',
+    studentName: 'Student Candidate',
+    round: 'System Design',
+    format: 'Virtual',
+    date: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
+    time: '02:00 PM - 03:00 PM',
+    meetingLink: 'https://teams.microsoft.com/l/meetup-join/placement-ai-round',
+    status: 'SCHEDULED',
+    interviewers: ['Principal AI Architect @ Azure AI'],
+    instructions: 'Focus on Transformer inference serving architectures and optimization.',
+    feedback: '',
+    rating: 0,
+  },
+  {
+    id: 'INT-KAG-003',
+    applicationId: 'APP-KAG-003',
+    jobId: 'KAG-JOB-004',
+    jobTitle: 'Cloud Infrastructure & DevOps Engineer',
+    company: 'Amazon Web Services (AWS)',
+    companyLogo: 'https://images.unsplash.com/photo-1523474255658-4af6167c4928?w=120',
+    studentId: 'STUDENT-ACTIVE',
+    studentName: 'Student Candidate',
+    round: 'Final Round',
+    format: 'Virtual',
+    date: new Date(Date.now() + 6 * 86400000).toISOString().split('T')[0],
+    time: '11:30 AM - 12:30 PM',
+    meetingLink: 'https://chime.aws/placement-aws-lead',
+    status: 'SCHEDULED',
+    interviewers: ['Engineering Director @ AWS Networking'],
+    instructions: 'Discussion on Amazon Leadership Principles and production incident retrospectives.',
+    feedback: '',
+    rating: 0,
+  },
+];
 
 export interface ToastMessage {
   id: string;
@@ -270,9 +334,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setCompanies(comps || []);
       setHrAccounts(hrs || []);
-      setJobs(jbs || []);
+      setJobs(jbs && jbs.length > 0 ? jbs : KAGGLE_CAMPUS_JOBS_DATASET);
       setApplications(apps || []);
-      setInterviews(ints || []);
+      setInterviews(ints && ints.length > 0 ? ints : REALISTIC_SAMPLE_INTERVIEWS);
       setPlacementDrives(drives || []);
       setStudents(stus || []);
 

@@ -44,20 +44,16 @@ export const Sidebar: React.FC = () => {
     { label: 'Dashboard', path: '/student/dashboard', icon: LayoutDashboard },
     { label: 'Self Assessment', path: '/student/assessment', icon: BrainCircuit },
     { label: 'Test Results', path: '/student/results', icon: BarChart3 },
-    { label: 'Jobs', path: '/student/jobs', icon: Briefcase },
+    { label: 'Job Eligibility & AI Apply', path: '/student/job-eligibility', icon: ShieldCheck },
+    { label: 'Jobs Directory', path: '/student/jobs', icon: Briefcase },
     { label: 'Applications', path: '/student/applications', icon: Layers },
     { label: 'Interviews', path: '/student/interview', icon: Calendar },
     { label: 'Profile', path: '/student/profile-resume', icon: UserCheck },
   ];
 
   const studentQuickLinks = [
-    { label: 'Retest Center', path: '/student/retest', icon: RotateCcw },
-    { label: 'Skill Analysis', path: '/student/skill-analysis', icon: BrainCircuit },
-    { label: 'Skill Gaps', path: '/student/skill-gaps', icon: TrendingDown },
-    { label: 'AI Job Suggestions', path: '/student/ai-job-suggestions', icon: Sparkles },
-    { label: 'Career Paths', path: '/student/career-paths', icon: Compass },
-    { label: 'Job Eligibility', path: '/student/job-eligibility', icon: ShieldCheck },
-    { label: 'Submit Application', path: '/student/apply', icon: Send },
+    { label: 'Skill Analysis & Gaps', path: '/student/skill-analysis', icon: BrainCircuit },
+    { label: 'Career Recommendations', path: '/student/career-paths', icon: Compass },
     { label: 'Growth Progress', path: '/student/progress', icon: LineChart },
   ];
 

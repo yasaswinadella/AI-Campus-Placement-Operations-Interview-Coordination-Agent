@@ -16,10 +16,11 @@ import {
 } from 'lucide-react';
 
 export const StudentInterview: React.FC = () => {
-  const { interviews, studentProfile } = useData();
+  const { interviews = [], studentProfile } = useData();
   const navigate = useNavigate();
 
-  const myInterviews = interviews.filter((i) => i.studentId === studentProfile.id);
+  const sId = studentProfile?.id || '';
+  const myInterviews = interviews.length > 0 ? interviews : [];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
