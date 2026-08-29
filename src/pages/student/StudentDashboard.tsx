@@ -136,33 +136,7 @@ export const StudentDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* AI Career Path Suggestion Hero Banner */}
-      <div className="bg-gradient-to-r from-[#1E1B4B] to-[#312E81] rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg text-white">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-xs font-bold mb-2 text-indigo-200">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AI Career Path Matcher</span>
-          </div>
-          <h4 className="text-white font-bold text-lg">Recommended Path: Full-Stack Distributed Systems Architect</h4>
-          <p className="text-[#C7D2FE] text-xs mt-1 max-w-xl">
-            Based on your verified skills and academic record, explore targeted career roadmaps matched with campus recruitment drives.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="bg-[#4F46E5] text-white text-[10px] px-2.5 py-1 rounded font-bold uppercase tracking-wider">
-              Target CTC: 18 - 26 LPA
-            </span>
-            <span className="bg-white/10 text-white text-[10px] px-2.5 py-1 rounded font-bold uppercase tracking-wider">
-              Career Readiness: {studentProfile?.careerReadiness || 0}%
-            </span>
-          </div>
-        </div>
-        <button
-          onClick={() => navigate('/student/career-paths')}
-          className="bg-white text-[#1E1B4B] px-6 py-2.5 rounded-xl text-sm font-bold shadow-xl hover:bg-[#F8FAFC] transition-all shrink-0 hover:scale-105 active:scale-95 cursor-pointer"
-        >
-          View Roadmap
-        </button>
-      </div>
+
 
       {/* Verified Skills Matrix & AI Suggested Openings */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
