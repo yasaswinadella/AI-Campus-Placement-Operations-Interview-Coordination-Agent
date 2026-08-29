@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { CreateJobModal } from '../../components/ui/CreateJobModal';
 import {
@@ -19,9 +20,25 @@ import {
 
 export const HrManageJobs: React.FC = () => {
   const { jobs, applications, deleteJob, updateJobStatus } = useData();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  // Filter jobs: Admin-posted jobs ONLY update student and are NOT shown in HR manage jobs
+  const hrJobs = (jobs || []).filter((job) => {
+    if (job.postedByRole === 'ADMIN') return false;
+    if (user?.companyId && job.companyId && job.companyId.toUpperCase() === user.companyId.toUpperCase()) {
+      return true;
+    }
+    if (user?.company && job.company && job.company.toLowerCase() === user.company.toLowerCase()) {
+      return true;
+    }
+    if (user?.hrId && job.postedByHrId === user.hrId) {
+      return true;
+    }
+    return job.postedByRole === 'HR';
+  });
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
@@ -32,13 +49,13 @@ export const HrManageJobs: React.FC = () => {
             Manage Corporate Job Postings
           </h1>
           <p className="text-xs text-[#64748B] mt-1">
-            Track active recruitment pipelines, applicant volumes, and toggle hiring statuses.
+            Track active recruitment pipelines, applicant volumes, and toggle hiring statuses for <strong className="text-[#0F172A]">{user?.company || 'Corporate Partner'}</strong>.
           </p>
         </div>
 
         <button
           onClick={() => setIsCreateOpen(true)}
-          className="px-4 py-2.5 bg-[#4F46E5] hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2"
+          className="px-4 py-2.5 bg-[#4F46E5] hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Post New Position</span>
@@ -61,7 +78,16 @@ export const HrManageJobs: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E2E8F0]">
-              {jobs.map((job) => {
+              {hrJobs.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-500">
+                    <Briefcase className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <p className="font-bold text-sm text-slate-800">No corporate positions posted yet</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Click "Post New Position" above to publish your company's campus recruitment drive.</p>
+                  </td>
+                </tr>
+              ) : (
+                hrJobs.map((job) => {
                 const jobApps = applications.filter((a) => a.jobId === job.id);
 
                 return (
@@ -130,9 +156,10 @@ export const HrManageJobs: React.FC = () => {
                         </button>
                       </div>
                     </td>
-                  </tr>
-                );
-              })}
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

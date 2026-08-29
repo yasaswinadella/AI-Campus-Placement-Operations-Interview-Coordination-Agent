@@ -33,7 +33,12 @@ export const HrDashboard: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const safeJobs = jobs || [];
+  const safeJobs = (jobs || []).filter((j) => {
+    if (j.postedByRole === 'ADMIN') return false;
+    if (user?.companyId && j.companyId && j.companyId.toUpperCase() === user.companyId.toUpperCase()) return true;
+    if (user?.company && j.company && j.company.toLowerCase() === user.company.toLowerCase()) return true;
+    return j.postedByRole === 'HR';
+  });
   const safeApps = applications || [];
   const safeInterviews = interviews || [];
 

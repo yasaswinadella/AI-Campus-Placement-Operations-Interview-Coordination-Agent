@@ -88,7 +88,8 @@ export const HrPostJob: React.FC = () => {
     createJob({
       title,
       company: user?.company || 'Enterprise Partner Corp',
-      companyLogo: 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=120&auto=format&fit=crop&q=80',
+      companyId: user?.companyId || '',
+      companyLogo: user?.avatar || 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=120&auto=format&fit=crop&q=80',
       department,
       location,
       workplace,
@@ -98,6 +99,9 @@ export const HrPostJob: React.FC = () => {
       skills,
       description,
       status: 'ACTIVE',
+      postedByHrId: user?.hrId || user?.id,
+      postedByRole: 'HR',
+      postedBy: user?.name || 'HR Recruiter',
     });
 
     navigate('/hr/manage-jobs');

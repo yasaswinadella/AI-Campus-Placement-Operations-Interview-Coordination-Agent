@@ -52,6 +52,7 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose 
       ],
       skills: skills.split(',').map((s) => s.trim()).filter(Boolean),
       postedByHrId: hrProfile.hrId,
+      postedByRole: 'HR',
     });
     onClose();
   };

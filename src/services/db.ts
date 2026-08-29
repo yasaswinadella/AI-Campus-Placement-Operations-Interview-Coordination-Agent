@@ -124,6 +124,8 @@ export function mapJobFromDb(row: any): Job {
     status: row.status || 'ACTIVE',
     applicantsCount: row.applicants_count !== undefined && row.applicants_count !== null ? Number(row.applicants_count) : (row.applicantsCount || 0),
     postedByHrId: row.posted_by_hr_id || row.postedByHrId || '',
+    postedByRole: row.posted_by_role || row.postedByRole || (row.posted_by_hr_id ? 'HR' : (row.posted_by_admin ? 'ADMIN' : undefined)),
+    postedBy: row.posted_by || row.postedBy || '',
   };
 }
 
@@ -149,6 +151,8 @@ export function mapJobToDb(j: Partial<Job>): any {
   if (j.status !== undefined) row.status = j.status;
   if (j.applicantsCount !== undefined) row.applicants_count = Number(j.applicantsCount);
   if (j.postedByHrId !== undefined) row.posted_by_hr_id = j.postedByHrId;
+  if (j.postedByRole !== undefined) row.posted_by_role = j.postedByRole;
+  if (j.postedBy !== undefined) row.posted_by = j.postedBy;
   return row;
 }
 

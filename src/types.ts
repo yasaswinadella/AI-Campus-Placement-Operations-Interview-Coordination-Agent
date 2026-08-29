@@ -121,6 +121,8 @@ export interface Job {
   status: 'ACTIVE' | 'CLOSED' | 'DRAFT';
   applicantsCount: number;
   postedByHrId?: string;
+  postedByRole?: 'ADMIN' | 'HR';
+  postedBy?: string;
 }
 
 export type ApplicationStatus = 'APPLIED' | 'SCREENING' | 'SHORTLISTED' | 'INTERVIEW' | 'SELECTED' | 'OFFERED' | 'REJECTED';

@@ -141,6 +141,8 @@ export const AdminJobs: React.FC = () => {
       status: 'ACTIVE',
       postedDate: new Date().toISOString().split('T')[0],
       applicantsCount: 0,
+      postedByRole: 'ADMIN',
+      postedBy: user?.name || 'Administrator',
     });
 
     setIsPostModalOpen(false);
