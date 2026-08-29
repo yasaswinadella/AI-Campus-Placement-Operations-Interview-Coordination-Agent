@@ -335,7 +335,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCompanies(comps || []);
       setHrAccounts(hrs || []);
       setJobs(jbs && jbs.length > 0 ? jbs : KAGGLE_CAMPUS_JOBS_DATASET);
-      setApplications(apps || []);
+      let mergedApps: JobApplication[] = [...(apps || [])];
+      try {
+        const stored = localStorage.getItem('cf_applications_all');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          parsed.forEach((pa: JobApplication) => {
+            if (!mergedApps.some((a) => a.id === pa.id || (a.jobId === pa.jobId && a.studentEmail === pa.studentEmail))) {
+              mergedApps.unshift(pa);
+            }
+          });
+        }
+      } catch {}
+      setApplications(mergedApps);
       setInterviews(ints && ints.length > 0 ? ints : REALISTIC_SAMPLE_INTERVIEWS);
       setPlacementDrives(drives || []);
       setStudents(stus || []);
@@ -676,9 +688,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ],
       };
 
+      const optimisticApp: JobApplication = {
+        ...newApp,
+        id: `APP-${Date.now()}`,
+      };
+      setApplications((prev) => [optimisticApp, ...prev.filter((a) => a.id !== optimisticApp.id)]);
+
+      try {
+        const stored = localStorage.getItem('cf_applications_all');
+        const list = stored ? JSON.parse(stored) : [];
+        localStorage.setItem('cf_applications_all', JSON.stringify([optimisticApp, ...list.filter((x: any) => x.id !== optimisticApp.id)]));
+      } catch {}
+
       dbService.createApplication(newApp).then((res) => {
         if (res.success && res.data) {
-          setApplications((prev) => [res.data!, ...prev]);
+          setApplications((prev) => prev.map((a) => (a.id === optimisticApp.id ? res.data! : a)));
         }
       });
 

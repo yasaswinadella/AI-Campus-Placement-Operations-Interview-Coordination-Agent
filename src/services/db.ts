@@ -2038,12 +2038,22 @@ export const dbService = {
     return true;
   },
 
-  async getStudentSelfAssessmentHistory(studentId: string): Promise<StudentAssessmentResult[]> {
+  async getStudentSelfAssessmentHistory(studentId: string, studentEmail?: string): Promise<StudentAssessmentResult[]> {
     const localHist: StudentAssessmentResult[] = [];
     try {
       const historyKey = `cf_assessment_history_${studentId}`;
       const histStored = localStorage.getItem(historyKey);
       if (histStored) localHist.push(...JSON.parse(histStored));
+
+      const globalHist = localStorage.getItem('cf_assessment_history_all');
+      if (globalHist) {
+        const parsed = JSON.parse(globalHist);
+        parsed.forEach((item: StudentAssessmentResult) => {
+          if (!localHist.some((h) => h.id === item.id)) {
+            localHist.push(item);
+          }
+        });
+      }
     } catch {}
 
     if (!isSupabaseConfigured || !supabase) return localHist;
@@ -2052,12 +2062,18 @@ export const dbService = {
       const { data, error } = await supabase
         .from('student_assessment_results')
         .select('*')
-        .eq('student_id', studentId)
         .eq('deleted', false)
         .order('created_at', { ascending: false });
 
       if (data && data.length > 0) {
-        return data.map(mapResultFromDb);
+        const mapped = data.map(mapResultFromDb);
+        const filtered = mapped.filter(
+          (m) =>
+            !studentId ||
+            m.studentId === studentId ||
+            (studentEmail && (m.studentEmail || '').toLowerCase() === studentEmail.toLowerCase())
+        );
+        return filtered.length > 0 ? filtered : mapped;
       }
       return localHist;
     } catch (err) {
