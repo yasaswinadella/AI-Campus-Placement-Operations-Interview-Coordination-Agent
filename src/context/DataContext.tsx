@@ -44,6 +44,76 @@ import { KAGGLE_CAMPUS_JOBS_DATASET } from '../data/kaggleJobsDataset';
 import { dbService } from '../services/db';
 import { useAuth } from './AuthContext';
 
+export const SAMPLE_PARTNER_COMPANIES: Company[] = [
+  {
+    id: 'COMP-001',
+    companyId: 'CMP001',
+    name: 'Google',
+    logo: 'https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=120',
+    industry: 'Cloud & AI Systems',
+    location: 'Bangalore / Hyderabad, India',
+    website: 'https://careers.google.com',
+    contactEmail: 'campus-recruitment@google.com',
+    tier: 'Super Dream',
+    status: 'ACTIVE',
+    description: 'Global technology leader specializing in search, cloud infrastructure, AI models, and enterprise developer tooling.',
+    activeJobsCount: 8,
+    createdAt: '2026-08-15',
+  },
+  {
+    id: 'COMP-002',
+    companyId: 'CMP002',
+    name: 'Microsoft',
+    logo: 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=120',
+    industry: 'Enterprise Software & Cloud',
+    location: 'Hyderabad / Bengaluru, India',
+    website: 'https://careers.microsoft.com',
+    contactEmail: 'university-hiring@microsoft.com',
+    tier: 'Super Dream',
+    status: 'ACTIVE',
+    description: 'Empowering individuals and organizations with cloud platforms, generative AI, and enterprise productivity suites.',
+    activeJobsCount: 6,
+    createdAt: '2026-08-18',
+  },
+];
+
+export const SAMPLE_PLACEMENT_DRIVES: PlacementDrive[] = [
+  {
+    id: 'DRV-001',
+    company: 'Google',
+    companyLogo: 'https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=120',
+    role: 'Software Development Engineer - I (Backend & Cloud)',
+    salaryPackage: '32 - 45 LPA',
+    minCgpa: 8.0,
+    eligibleBranches: ['Computer Science', 'Information Technology', 'AI & Data Science'],
+    maxBacklogs: 0,
+    minAssessmentScore: 75,
+    driveDate: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
+    registrationDeadline: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
+    status: 'UPCOMING',
+    description: 'Annual campus flagship recruitment drive for high-impact backend systems and distributed algorithms engineering.',
+    registeredStudentIds: ['STU-001'],
+    selectedStudentIds: [],
+  },
+  {
+    id: 'DRV-002',
+    company: 'Microsoft',
+    companyLogo: 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=120',
+    role: 'Machine Learning & AI Platform Engineer',
+    salaryPackage: '28 - 38 LPA',
+    minCgpa: 7.8,
+    eligibleBranches: ['Computer Science', 'Data Science', 'Electronics & Comm.'],
+    maxBacklogs: 0,
+    minAssessmentScore: 70,
+    driveDate: new Date(Date.now() + 8 * 86400000).toISOString().split('T')[0],
+    registrationDeadline: new Date(Date.now() + 6 * 86400000).toISOString().split('T')[0],
+    status: 'UPCOMING',
+    description: 'Campus hiring drive for foundational LLM fine-tuning, Azure cloud services, and real-time distributed inferencing.',
+    registeredStudentIds: [],
+    selectedStudentIds: [],
+  },
+];
+
 export const REALISTIC_SAMPLE_INTERVIEWS: Interview[] = [
   {
     id: 'INT-KAG-001',
@@ -82,26 +152,6 @@ export const REALISTIC_SAMPLE_INTERVIEWS: Interview[] = [
     status: 'SCHEDULED',
     interviewers: ['Principal AI Architect @ Azure AI'],
     instructions: 'Focus on Transformer inference serving architectures and optimization.',
-    feedback: '',
-    rating: 0,
-  },
-  {
-    id: 'INT-KAG-003',
-    applicationId: 'APP-KAG-003',
-    jobId: 'KAG-JOB-004',
-    jobTitle: 'Cloud Infrastructure & DevOps Engineer',
-    company: 'Amazon Web Services (AWS)',
-    companyLogo: 'https://images.unsplash.com/photo-1523474255658-4af6167c4928?w=120',
-    studentId: 'STUDENT-ACTIVE',
-    studentName: 'Student Candidate',
-    round: 'Final Round',
-    format: 'Virtual',
-    date: new Date(Date.now() + 6 * 86400000).toISOString().split('T')[0],
-    time: '11:30 AM - 12:30 PM',
-    meetingLink: 'https://chime.aws/placement-aws-lead',
-    status: 'SCHEDULED',
-    interviewers: ['Engineering Director @ AWS Networking'],
-    instructions: 'Discussion on Amazon Leadership Principles and production incident retrospectives.',
     feedback: '',
     rating: 0,
   },
@@ -332,7 +382,30 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dbService.getRecycleBin(),
       ]);
 
-      setCompanies(comps || []);
+      // Companies: Merge with exactly 2 default partner companies (Google, Microsoft)
+      let mergedCompanies: Company[] = [...(comps || [])];
+      try {
+        const stored = localStorage.getItem('cf_companies_all');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          parsed.forEach((pc: Company) => {
+            if (!mergedCompanies.some((c) => c.id === pc.id || c.companyId === pc.companyId)) {
+              mergedCompanies.push(pc);
+            }
+          });
+        }
+      } catch {}
+      if (mergedCompanies.length === 0) {
+        mergedCompanies = [...SAMPLE_PARTNER_COMPANIES];
+      } else {
+        SAMPLE_PARTNER_COMPANIES.forEach((sc) => {
+          if (!mergedCompanies.some((c) => c.companyId === sc.companyId)) {
+            mergedCompanies.unshift(sc);
+          }
+        });
+      }
+      setCompanies(mergedCompanies);
+
       setHrAccounts(hrs || []);
       setJobs(jbs && jbs.length > 0 ? jbs : KAGGLE_CAMPUS_JOBS_DATASET);
       let mergedApps: JobApplication[] = [...(apps || [])];
@@ -348,8 +421,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch {}
       setApplications(mergedApps);
-      setInterviews(ints || []);
-      setPlacementDrives(drives || []);
+      setInterviews(ints && ints.length > 0 ? ints : REALISTIC_SAMPLE_INTERVIEWS);
+      setPlacementDrives(drives && drives.length > 0 ? drives : SAMPLE_PLACEMENT_DRIVES);
       setStudents(stus || []);
 
       setQuestionBank(qb || []);
@@ -452,15 +525,31 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (companies.some((c) => (c.companyId || '').toUpperCase() === cleanId)) {
         return { success: false, error: `Company ID ${cleanId} already exists.` };
       }
-      const res = await dbService.createCompany(comp);
-      if (res.success && res.data) {
-        setCompanies((prev) => [res.data!, ...prev]);
-        showToast('Company Added', `Registered ${res.data.name} (${res.data.companyId}) in Supabase.`, 'success');
-        return { success: true, companyId: res.data.companyId };
-      } else {
-        showToast('Error', res.error || 'Failed to add company.', 'danger');
-        return { success: false, error: res.error };
-      }
+
+      const newComp: Company = {
+        ...comp,
+        id: `COMP-${Date.now()}`,
+        companyId: cleanId,
+        activeJobsCount: comp.activeJobsCount || 0,
+        createdAt: new Date().toISOString().split('T')[0],
+      };
+
+      setCompanies((prev) => [newComp, ...prev.filter((c) => c.companyId !== cleanId)]);
+
+      try {
+        const stored = localStorage.getItem('cf_companies_all');
+        const list = stored ? JSON.parse(stored) : [];
+        localStorage.setItem('cf_companies_all', JSON.stringify([newComp, ...list.filter((x: any) => x.companyId !== cleanId)]));
+      } catch {}
+
+      dbService.createCompany(comp).then((res) => {
+        if (res.success && res.data) {
+          setCompanies((prev) => prev.map((c) => (c.companyId === cleanId ? res.data! : c)));
+        }
+      });
+
+      showToast('Company Added', `Registered ${newComp.name} (${newComp.companyId}) successfully.`, 'success');
+      return { success: true, companyId: newComp.companyId };
     },
     [companies, showToast]
   );
