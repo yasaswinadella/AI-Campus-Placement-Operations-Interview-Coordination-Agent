@@ -20,6 +20,7 @@ import {
   Phone,
   Sparkles,
 } from 'lucide-react';
+import { StudentResumeModal } from '../../components/ui/StudentResumeModal';
 
 export const AdminStudents: React.FC = () => {
   const { students = [], applications = [], studentAssessmentResults = [], refreshData, showToast } = useData();
@@ -29,6 +30,7 @@ export const AdminStudents: React.FC = () => {
   const [selectedPlacementStatus, setSelectedPlacementStatus] = useState('ALL');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
+  const [isResumeModalOpen, setIsResumeModalOpen] = useState<boolean>(false);
 
   const safeStudents = students || [];
   const safeApps = applications || [];
@@ -383,23 +385,19 @@ export const AdminStudents: React.FC = () => {
                 </span>
               </div>
 
-              {selectedStudent.resumeUrl ? (
-                <div className="pt-1">
-                  <a
-                    href={selectedStudent.resumeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-indigo-200 hover:bg-indigo-50 text-indigo-700 font-bold text-xs rounded-xl shadow-xs transition-all"
-                  >
-                    <span>View Student Resume Document</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              ) : (
-                <span className="text-[11px] font-semibold text-slate-500 italic block">
-                  Default verified candidate profile document on file.
+              <div className="pt-1 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setIsResumeModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Open Student Resume / PDF Document</span>
+                </button>
+                <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Authenticated
                 </span>
-              )}
+              </div>
             </div>
 
             {/* Real Skill Breakdown */}
@@ -467,6 +465,13 @@ export const AdminStudents: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Student Universal Resume / PDF Modal */}
+      <StudentResumeModal
+        isOpen={isResumeModalOpen}
+        onClose={() => setIsResumeModalOpen(false)}
+        student={selectedStudent}
+      />
     </div>
   );
 };

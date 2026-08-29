@@ -25,12 +25,14 @@ import {
   Eye,
   Check,
 } from 'lucide-react';
+import { StudentResumeModal } from '../../components/ui/StudentResumeModal';
 
 export const AdminSkillAnalytics: React.FC = () => {
   const { students = [], studentAssessmentResults = [], placementDrives = [], jobs = [] } = useData();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
+  const [isResumeModalOpen, setIsResumeModalOpen] = useState<boolean>(false);
 
   // Dynamic calculations from real database state
   const totalStudents = students.length || 1;
@@ -349,23 +351,19 @@ export const AdminSkillAnalytics: React.FC = () => {
                 Resume verified by CareerFlow ATS Parser. High keyword density for distributed systems, backend architectures, and API design.
               </p>
 
-              {selectedStudent.resumeUrl ? (
-                <div className="pt-1">
-                  <a
-                    href={selectedStudent.resumeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-indigo-200 hover:bg-indigo-50 text-indigo-700 font-bold text-xs rounded-xl shadow-xs transition-all"
-                  >
-                    <span>View Candidate Resume Document</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              ) : (
-                <span className="text-[11px] font-semibold text-slate-500 italic block">
-                  Default institutional resume document on file.
+              <div className="pt-1 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setIsResumeModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Open Candidate Resume / PDF</span>
+                </button>
+                <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Authenticated Dossier
                 </span>
-              )}
+              </div>
             </div>
 
             {/* INDIVIDUAL SKILL SCORES BREAKDOWN FROM REAL DATA */}
@@ -425,6 +423,13 @@ export const AdminSkillAnalytics: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Candidate Universal Resume / PDF Modal */}
+      <StudentResumeModal
+        isOpen={isResumeModalOpen}
+        onClose={() => setIsResumeModalOpen(false)}
+        student={selectedStudent}
+      />
     </div>
   );
 };

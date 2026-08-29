@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { ScheduleInterviewModal } from '../../components/ui/ScheduleInterviewModal';
+import { StudentResumeModal } from '../../components/ui/StudentResumeModal';
 import { ApplicationStatus, JobApplication } from '../../types';
 import {
   Users,
@@ -37,6 +38,7 @@ export const HrApplicants: React.FC = () => {
 
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [selectedAppForSchedule, setSelectedAppForSchedule] = useState<any>(null);
+  const [isResumeModalOpen, setIsResumeModalOpen] = useState<boolean>(false);
 
   // Unified Student Dossier State
   const [selectedDossierApp, setSelectedDossierApp] = useState<JobApplication | null>(() => {
@@ -441,15 +443,14 @@ export const HrApplicants: React.FC = () => {
                     <div className="text-[11px] text-slate-500">Verified PDF attached to application #{selectedDossierApp.id}</div>
                   </div>
                 </div>
-                <a
-                  href={selectedDossierApp.resumeUrl || dossierStudent.resumeUrl || '#'}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                <button
+                  type="button"
+                  onClick={() => setIsResumeModalOpen(true)}
+                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  <span>Open PDF</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Open PDF / Resume</span>
+                </button>
               </div>
             </div>
 
@@ -503,6 +504,33 @@ export const HrApplicants: React.FC = () => {
           }}
           defaultStudentId={selectedAppForSchedule.studentId}
           defaultJobId={selectedAppForSchedule.jobId}
+        />
+      )}
+
+      {/* Candidate Universal Resume / PDF Modal */}
+      {selectedDossierApp && (
+        <StudentResumeModal
+          isOpen={isResumeModalOpen}
+          onClose={() => setIsResumeModalOpen(false)}
+          student={students.find((s) => s.id === selectedDossierApp.studentId || (s.email || '').toLowerCase() === (selectedDossierApp.studentEmail || '').toLowerCase()) || {
+            id: selectedDossierApp.studentId,
+            name: selectedDossierApp.studentName,
+            email: selectedDossierApp.studentEmail,
+            college: selectedDossierApp.studentCollege,
+            branch: selectedDossierApp.studentBranch,
+            cgpa: selectedDossierApp.studentCgpa,
+            skills: selectedDossierApp.studentSkills ? selectedDossierApp.studentSkills.reduce((acc, sk) => ({ ...acc, [sk]: 85 }), {}) : {},
+            resumeUrl: selectedDossierApp.resumeUrl,
+            resumeFileName: 'Candidate_Resume.pdf',
+            overallSkillScore: selectedDossierApp.matchScore || 85,
+            graduationYear: 2026,
+            careerReadiness: 90,
+            bio: selectedDossierApp.coverLetter || '',
+            atsScore: selectedDossierApp.matchScore || 88,
+            profileCompleteness: 100,
+            status: 'ACTIVE',
+          }}
+          applicationId={selectedDossierApp.id}
         />
       )}
     </div>

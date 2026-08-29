@@ -12,7 +12,9 @@ import {
   Award,
   BookOpen,
   Briefcase,
+  Eye,
 } from 'lucide-react';
+import { StudentResumeModal } from '../../components/ui/StudentResumeModal';
 
 export const StudentProfileResume: React.FC = () => {
   const { studentProfile, updateStudentProfile, showToast } = useData();
@@ -27,6 +29,10 @@ export const StudentProfileResume: React.FC = () => {
   const [portfolio, setPortfolio] = useState(studentProfile.portfolio);
   const [linkedin, setLinkedin] = useState(studentProfile.linkedin);
   const [github, setGithub] = useState(studentProfile.github);
+  const [resumeUrl, setResumeUrl] = useState<string>(studentProfile.resumeUrl || '');
+  const [resumeFileName, setResumeFileName] = useState<string>(studentProfile.resumeFileName || 'Student_Resume_2026.pdf');
+  const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false);
+
   const [targetIndustry, setTargetIndustry] = useState('Full Stack & Cloud Software Engineering');
   const [isScanningAts, setIsScanningAts] = useState(false);
   const [atsAnalysis, setAtsAnalysis] = useState<{
@@ -80,7 +86,19 @@ export const StudentProfileResume: React.FC = () => {
     }, 1000);
   };
 
-  const [resumeFileName, setResumeFileName] = useState(studentProfile.resumeFileName || 'Student_Resume_2026.pdf');
+  const handleFileUpload = (file: File) => {
+    setResumeFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      if (dataUrl) {
+        setResumeUrl(dataUrl);
+        updateStudentProfile({ resumeUrl: dataUrl, resumeFileName: file.name });
+        showToast('Resume Uploaded & Saved', `Uploaded ${file.name} successfully.`);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,10 +113,11 @@ export const StudentProfileResume: React.FC = () => {
       portfolio,
       linkedin,
       github,
+      resumeUrl,
       resumeFileName,
       atsScore: atsAnalysis.score,
     });
-    showToast('Profile Saved', 'Your student credentials and ATS resume analysis were saved.');
+    showToast('Profile Saved', 'Your student credentials and ATS resume analysis were saved permanently in database.');
   };
 
   return (
@@ -134,10 +153,19 @@ export const StudentProfileResume: React.FC = () => {
               type="button"
               disabled={isScanningAts}
               onClick={handleRunAiAtsScan}
-              className="px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-500/30 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
+              className="px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-500/30 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               <Sparkles className="w-4 h-4" />
               <span>{isScanningAts ? 'Scanning Resume...' : '⚡ Run AI Deep Scan'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsPreviewOpen(true)}
+              className="px-4 py-2.5 bg-white/15 hover:bg-white/25 text-white font-bold text-xs rounded-xl border border-white/20 transition-all flex items-center gap-2 cursor-pointer shadow-xs"
+            >
+              <Eye className="w-4 h-4 text-emerald-400" />
+              <span>Preview / Open PDF</span>
             </button>
 
             <div className="flex items-center gap-3 bg-white/10 p-2.5 rounded-2xl border border-white/15 backdrop-blur-md">
@@ -153,8 +181,7 @@ export const StudentProfileResume: React.FC = () => {
                   className="hidden"
                   onChange={(e) => {
                     if (e.target.files?.[0]) {
-                      setResumeFileName(e.target.files[0].name);
-                      showToast('Resume Attached', `Uploaded ${e.target.files[0].name}`);
+                      handleFileUpload(e.target.files[0]);
                     }
                   }}
                 />
@@ -318,13 +345,35 @@ export const StudentProfileResume: React.FC = () => {
         <div className="pt-4 border-t border-[#E2E8F0] flex items-center justify-end">
           <button
             type="submit"
-            className="px-6 py-2.5 bg-[#4F46E5] hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-500/25 transition-all flex items-center gap-2"
+            className="px-6 py-2.5 bg-[#4F46E5] hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-500/25 transition-all flex items-center gap-2 cursor-pointer"
           >
             <Save className="w-4 h-4" />
             <span>Save Academic Profile</span>
           </button>
         </div>
       </form>
+
+      {/* Resume Document Preview Modal */}
+      <StudentResumeModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        student={{
+          ...studentProfile,
+          name,
+          email,
+          college,
+          branch,
+          cgpa,
+          graduationYear: gradYear,
+          bio,
+          portfolio,
+          linkedin,
+          github,
+          resumeUrl,
+          resumeFileName,
+          atsScore: atsAnalysis.score,
+        }}
+      />
     </div>
   );
 };

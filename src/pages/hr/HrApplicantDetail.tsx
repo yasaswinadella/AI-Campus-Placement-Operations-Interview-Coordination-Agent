@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { ScheduleInterviewModal } from '../../components/ui/ScheduleInterviewModal';
+import { StudentResumeModal } from '../../components/ui/StudentResumeModal';
 import {
   User,
   GraduationCap,
@@ -28,6 +29,7 @@ export const HrApplicantDetail: React.FC = () => {
   const candidate = students.find((s) => s.id === currentApp.studentId) || students[0];
 
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
   const [internalNotes, setInternalNotes] = useState(
     'Candidate demonstrates high technical aptitude in Python, System Architecture, and React. Verified 98th percentile score in campus assessments.'
   );
@@ -39,7 +41,7 @@ export const HrApplicantDetail: React.FC = () => {
         <div>
           <button
             onClick={() => navigate('/hr/applicants')}
-            className="text-xs font-semibold text-[#64748B] hover:text-[#0F172A] flex items-center gap-1 mb-2"
+            className="text-xs font-semibold text-[#64748B] hover:text-[#0F172A] flex items-center gap-1 mb-2 cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
             Back to All Applicants
@@ -55,13 +57,22 @@ export const HrApplicantDetail: React.FC = () => {
 
         {/* Evaluation Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsResumeModalOpen(true)}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <FileText className="w-4 h-4" />
+            <span>Open Resume PDF</span>
+          </button>
+
           {currentApp.status === 'APPLIED' && (
             <button
               onClick={() => {
                 updateApplicationStatus(currentApp.id, 'SHORTLISTED');
                 showToast('Shortlisted', `${candidate.name} shortlisted for ${currentApp.jobTitle}.`);
               }}
-              className="px-4 py-2 bg-[#22C55E] hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 bg-[#22C55E] hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>Shortlist Candidate</span>
@@ -70,7 +81,7 @@ export const HrApplicantDetail: React.FC = () => {
 
           <button
             onClick={() => setIsScheduleOpen(true)}
-            className="px-4 py-2 bg-[#4F46E5] hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+            className="px-4 py-2 bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Calendar className="w-4 h-4" />
             <span>Schedule Interview</span>
@@ -82,7 +93,7 @@ export const HrApplicantDetail: React.FC = () => {
                 updateApplicationStatus(currentApp.id, 'OFFERED');
                 showToast('Offer Extended', `Official campus offer extended to ${candidate.name}!`);
               }}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Award className="w-4 h-4" />
               <span>Extend Job Offer</span>
@@ -95,7 +106,7 @@ export const HrApplicantDetail: React.FC = () => {
                 updateApplicationStatus(currentApp.id, 'REJECTED');
                 showToast('Application Closed', `${candidate.name}'s application updated.`);
               }}
-              className="px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+              className="px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
             >
               Reject
             </button>
@@ -217,6 +228,14 @@ export const HrApplicantDetail: React.FC = () => {
         onClose={() => setIsScheduleOpen(false)}
         defaultStudentId={candidate.id}
         defaultJobId={currentApp.jobId}
+      />
+
+      {/* Candidate Universal Resume / PDF Modal */}
+      <StudentResumeModal
+        isOpen={isResumeModalOpen}
+        onClose={() => setIsResumeModalOpen(false)}
+        student={candidate}
+        applicationId={currentApp.id}
       />
     </div>
   );
