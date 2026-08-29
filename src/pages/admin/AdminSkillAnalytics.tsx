@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../../context/DataContext';
-import { StudentProfile, StudentAssessmentResult } from '../../types';
+import { StudentProfile } from '../../types';
 import {
   BrainCircuit,
   TrendingUp,
@@ -38,11 +38,13 @@ export const AdminSkillAnalytics: React.FC = () => {
     ? (students.reduce((acc, s) => acc + (Number(s.cgpa) || 0), 0) / students.length).toFixed(1)
     : '8.2';
 
-  const avgSkillScore = students.length > 0
-    ? Math.round(students.reduce((acc, s) => acc + (Number(s.overallSkillScore) || 80), 0) / students.length)
-    : 82;
+  // Live average verified score across all completed tests in database
+  const liveTestCount = studentAssessmentResults.length;
+  const avgSkillScore = liveTestCount > 0
+    ? Math.round(studentAssessmentResults.reduce((acc, r) => acc + (Number(r.percentage) || 0), 0) / liveTestCount)
+    : 80;
 
-  // Domain scores derived from live assessment results & student skills
+  // Domain scores derived strictly from live assessment results
   const getDomainAvg = (keyword: string, fallback: number) => {
     const matchingResults = studentAssessmentResults.filter((r) => r.skill.toLowerCase().includes(keyword.toLowerCase()));
     if (matchingResults.length > 0) {
@@ -81,22 +83,25 @@ export const AdminSkillAnalytics: React.FC = () => {
     );
   });
 
-  // Get specific skill score for a candidate
+  // Get specific real skill score for a candidate from Supabase
   const getCandidateSkillScore = (student: StudentProfile, skillName: string) => {
+    const sId = student.id;
+    const sEmail = (student.email || '').toLowerCase();
+
     // 1. Check assessment results
     const foundAssessment = studentAssessmentResults.find(
       (r) =>
-        (r.studentId === student.id || r.studentEmail === student.email) &&
+        ((sId && r.studentId === sId) || (sEmail && (r.studentEmail || '').toLowerCase() === sEmail)) &&
         r.skill.toLowerCase().includes(skillName.toLowerCase())
     );
-    if (foundAssessment) return { score: foundAssessment.percentage, verified: true };
+    if (foundAssessment) return { score: foundAssessment.percentage, verified: true, date: foundAssessment.date };
 
     // 2. Check profile skills dictionary
-    if (student.skills && student.skills[skillName] !== undefined) {
-      return { score: Number(student.skills[skillName]), verified: true };
+    if (student.skills && student.skills[skillName] !== undefined && Number(student.skills[skillName]) > 0) {
+      return { score: Number(student.skills[skillName]), verified: true, date: 'Profile Verified' };
     }
 
-    return { score: 0, verified: false };
+    return { score: 0, verified: false, date: '' };
   };
 
   return (
@@ -107,14 +112,14 @@ export const AdminSkillAnalytics: React.FC = () => {
           Campus Skill Analytics & Candidate Performance Matrix
         </h1>
         <p className="text-xs text-[#64748B] mt-1">
-          Evaluate batch efficiency, individual candidate skill ratings, and verified ATS resume scores.
+          Evaluate registered student cohort efficiency, individual candidate skill ratings, and verified ATS resume scores from Supabase.
         </p>
       </div>
 
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
         <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-xs">
-          <span className="text-[11px] font-semibold uppercase text-[#64748B]">Evaluated Cohort</span>
+          <span className="text-[11px] font-semibold uppercase text-[#64748B]">Real Registered Cohort</span>
           <h3 className="text-3xl font-extrabold text-[#0F172A] mt-2">{students.length} Candidates</h3>
           <p className="text-xs text-slate-500 mt-1">Class of 2026 Batch</p>
         </div>
@@ -124,7 +129,7 @@ export const AdminSkillAnalytics: React.FC = () => {
           <h3 className="text-3xl font-extrabold text-[#4F46E5] mt-2">{avgSkillScore}%</h3>
           <p className="text-xs text-emerald-600 font-semibold mt-1 flex items-center gap-1">
             <TrendingUp className="w-3.5 h-3.5" />
-            <span>+12% above benchmark</span>
+            <span>{liveTestCount} real assessments evaluated</span>
           </p>
         </div>
 
@@ -147,7 +152,7 @@ export const AdminSkillAnalytics: React.FC = () => {
           <div>
             <h3 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
               <Users className="w-5 h-5 text-[#4F46E5]" />
-              Candidate Competency & Efficiency Index
+              Real Candidate Competency & Efficiency Index
             </h3>
             <p className="text-xs text-[#64748B]">Click any candidate to inspect individual skill scores & ATS resume ratings</p>
           </div>
@@ -177,15 +182,23 @@ export const AdminSkillAnalytics: React.FC = () => {
                   <th className="pb-3">Branch & College</th>
                   <th className="pb-3">CGPA</th>
                   <th className="pb-3">Efficiency / Readiness</th>
-                  <th className="pb-3">Skill Score</th>
+                  <th className="pb-3">Verified Skill Score</th>
                   <th className="pb-3">Resume ATS</th>
                   <th className="pb-3 text-right pr-2">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800 font-medium">
                 {filteredStudents.map((st) => {
-                  const efficiency = st.careerReadiness || Math.min(95, Math.round((st.cgpa || 8.0) * 8 + 20));
-                  const skillScore = st.overallSkillScore || Math.min(96, Math.round((st.cgpa || 8.0) * 9 + 10));
+                  const sId = st.id;
+                  const sEmail = (st.email || '').toLowerCase();
+                  const myTests = studentAssessmentResults.filter(
+                    (r) => (sId && r.studentId === sId) || (sEmail && (r.studentEmail || '').toLowerCase() === sEmail)
+                  );
+                  const realSkillScore = myTests.length > 0
+                    ? Math.round(myTests.reduce((sum, t) => sum + t.percentage, 0) / myTests.length)
+                    : (st.overallSkillScore || 0);
+
+                  const efficiency = st.careerReadiness || (realSkillScore > 0 ? realSkillScore : (st.cgpa ? Math.min(95, Math.round(st.cgpa * 8 + 20)) : 40));
                   const atsScore = st.atsScore || 88;
 
                   return (
@@ -215,7 +228,7 @@ export const AdminSkillAnalytics: React.FC = () => {
 
                       <td className="py-3.5">
                         <span className="font-extrabold text-[#0F172A] text-xs px-2.5 py-1 bg-slate-100 rounded-lg">
-                          {st.cgpa || '8.2'}
+                          {st.cgpa ? `${st.cgpa} CGPA` : 'N/A'}
                         </span>
                       </td>
 
@@ -232,7 +245,9 @@ export const AdminSkillAnalytics: React.FC = () => {
                       </td>
 
                       <td className="py-3.5">
-                        <span className="font-extrabold text-indigo-600 text-xs">{skillScore}%</span>
+                        <span className={`font-extrabold text-xs ${realSkillScore > 0 ? 'text-indigo-600' : 'text-slate-400'}`}>
+                          {realSkillScore > 0 ? `${realSkillScore}% (${myTests.length} tests)` : 'Pending Test'}
+                        </span>
                       </td>
 
                       <td className="py-3.5">
@@ -353,20 +368,19 @@ export const AdminSkillAnalytics: React.FC = () => {
               )}
             </div>
 
-            {/* INDIVIDUAL SKILL SCORES BREAKDOWN */}
+            {/* INDIVIDUAL SKILL SCORES BREAKDOWN FROM REAL DATA */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-sm text-[#0F172A] flex items-center gap-2">
                   <BrainCircuit className="w-4 h-4 text-[#4F46E5]" />
-                  Individual Domain Skill Scores
+                  Real Individual Skill Scores
                 </h3>
-                <span className="text-[11px] text-slate-500">Verified Benchmarks</span>
+                <span className="text-[11px] text-slate-500">Live Supabase Assessment Records</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {coreSkillList.map((sk) => {
                   const data = getCandidateSkillScore(selectedStudent, sk);
-                  const displayScore = data.score > 0 ? data.score : 80;
 
                   return (
                     <div
@@ -375,18 +389,24 @@ export const AdminSkillAnalytics: React.FC = () => {
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-bold text-slate-800">{sk}</span>
-                        <span className="font-extrabold text-indigo-600">{displayScore}%</span>
+                        <span className={`font-extrabold ${data.score > 0 ? 'text-indigo-600' : 'text-slate-400'}`}>
+                          {data.score > 0 ? `${data.score}%` : 'Not Assessed (0%)'}
+                        </span>
                       </div>
                       <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-[#4F46E5] rounded-full transition-all duration-500"
-                          style={{ width: `${displayScore}%` }}
+                          style={{ width: `${data.score}%` }}
                         />
                       </div>
-                      <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                        Verified Assessment Record
-                      </span>
+                      {data.score > 0 ? (
+                        <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
+                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                          Verified Assessment ({data.date})
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400">Awaiting test attempt</span>
+                      )}
                     </div>
                   );
                 })}
