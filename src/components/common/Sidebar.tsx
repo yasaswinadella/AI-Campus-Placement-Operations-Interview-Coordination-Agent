@@ -75,6 +75,7 @@ export const Sidebar: React.FC = () => {
 
   const adminPrimaryNav = [
     { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
+    { label: 'Campus Job Directory', path: '/admin/jobs', icon: Briefcase },
     { label: 'Student Directory', path: '/admin/students', icon: GraduationCap },
     { label: 'Partner Companies', path: '/admin/companies', icon: Building2 },
     { label: 'Placement Drive', path: '/admin/placement-drives', icon: Megaphone },

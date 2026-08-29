@@ -42,6 +42,7 @@ import { HrShortlistedPool } from './pages/hr/HrShortlistedPool';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminStudents } from './pages/admin/AdminStudents';
 import { AdminCompanies } from './pages/admin/AdminCompanies';
+import { AdminJobs } from './pages/admin/AdminJobs';
 import { AdminPlacementDrives } from './pages/admin/AdminPlacementDrives';
 import { AdminInterviews } from './pages/admin/AdminInterviews';
 import { AdminAssessments } from './pages/admin/AdminAssessments';
@@ -136,6 +137,7 @@ export function App() {
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="students" element={<AdminStudents />} />
               <Route path="companies" element={<AdminCompanies />} />
+              <Route path="jobs" element={<AdminJobs />} />
               <Route path="placement-drives" element={<AdminPlacementDrives />} />
               <Route path="interviews" element={<AdminInterviews />} />
               <Route path="assessments" element={<Navigate to="/admin/skill-analytics" replace />} />

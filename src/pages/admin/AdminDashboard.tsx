@@ -67,18 +67,25 @@ export const AdminDashboard: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-3">
             <button
+              onClick={() => navigate('/admin/jobs')}
+              className="px-5 py-3 rounded-xl bg-white text-[#4F46E5] font-bold text-xs shadow-lg hover:bg-indigo-50 transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <Briefcase className="w-4 h-4" />
+              <span>Upload Campus Jobs</span>
+            </button>
+            <button
               onClick={() => setIsCreateDriveOpen(true)}
-              className="px-5 py-3 rounded-xl bg-white text-[#4F46E5] font-bold text-xs shadow-lg hover:bg-indigo-50 transition-all flex items-center gap-2"
+              className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs border border-white/20 backdrop-blur-md transition-all flex items-center gap-2 cursor-pointer"
             >
               <Megaphone className="w-4 h-4" />
               <span>Announce Drive</span>
             </button>
             <button
               onClick={handleExportFullReport}
-              className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs border border-white/20 backdrop-blur-md transition-all flex items-center gap-2"
+              className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs border border-white/20 backdrop-blur-md transition-all flex items-center gap-2 cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              <span>Export Placement Dossier</span>
+              <span>Export Dossier</span>
             </button>
           </div>
         </div>
