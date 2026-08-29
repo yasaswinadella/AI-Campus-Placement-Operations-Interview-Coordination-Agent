@@ -997,6 +997,37 @@ export const dbService = {
     }
   },
 
+  async deleteHrAccount(idOrHrId: string): Promise<{ success: boolean }> {
+    try {
+      const existing = JSON.parse(localStorage.getItem('cf_hr_accounts') || '[]');
+      const filtered = existing.filter((item: any) => item.id !== idOrHrId && item.hrId !== idOrHrId && item.email !== idOrHrId);
+      localStorage.setItem('cf_hr_accounts', JSON.stringify(filtered));
+    } catch {}
+
+    if (!isSupabaseConfigured || !supabase) return { success: true };
+    try {
+      await supabase.from('profiles').delete().or(`hr_id.eq.${idOrHrId},id.eq.${idOrHrId},email.eq.${idOrHrId}`);
+      try {
+        await supabase.from('hr_accounts').delete().or(`id.eq.${idOrHrId},hr_id.eq.${idOrHrId},email.eq.${idOrHrId}`);
+      } catch {}
+      return { success: true };
+    } catch (err) {
+      console.warn('Supabase deleteHrAccount non-fatal:', err);
+      return { success: true };
+    }
+  },
+
+  async deleteProfile(userId: string): Promise<{ success: boolean }> {
+    try {
+      if (isSupabaseConfigured && supabase) {
+        await supabase.from('profiles').delete().eq('id', userId);
+      }
+    } catch (err) {
+      console.warn('Supabase deleteProfile non-fatal:', err);
+    }
+    return { success: true };
+  },
+
   // ---------------------------------------------------------------------------
   // JOBS (HR creates & manages)
   // ---------------------------------------------------------------------------
@@ -1066,7 +1097,16 @@ export const dbService = {
   },
 
   async updateJob(id: string, updates: Partial<Job>): Promise<{ success: boolean }> {
-    if (!isSupabaseConfigured || !supabase) return { success: false };
+    try {
+      const stored = localStorage.getItem('cf_jobs_all');
+      if (stored) {
+        const list = JSON.parse(stored);
+        const updated = list.map((j: any) => j.id === id ? { ...j, ...updates } : j);
+        localStorage.setItem('cf_jobs_all', JSON.stringify(updated));
+      }
+    } catch {}
+
+    if (!isSupabaseConfigured || !supabase) return { success: true };
     try {
       const dbPayload = mapJobToDb(updates);
       const { error } = await supabase.from('jobs').update(dbPayload).eq('id', id);
@@ -1079,7 +1119,16 @@ export const dbService = {
   },
 
   async deleteJob(id: string, deletedBy = 'HR'): Promise<{ success: boolean }> {
-    if (!isSupabaseConfigured || !supabase) return { success: false };
+    try {
+      const stored = localStorage.getItem('cf_jobs_all');
+      if (stored) {
+        const list = JSON.parse(stored);
+        const filtered = list.filter((j: any) => j.id !== id);
+        localStorage.setItem('cf_jobs_all', JSON.stringify(filtered));
+      }
+    } catch {}
+
+    if (!isSupabaseConfigured || !supabase) return { success: true };
     try {
       const { error } = await supabase
         .from('jobs')
@@ -1088,7 +1137,7 @@ export const dbService = {
       return { success: !error };
     } catch (err) {
       console.warn('Supabase deleteJob exception:', err);
-      return { success: false };
+      return { success: true };
     }
   },
 

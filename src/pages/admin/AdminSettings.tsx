@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
 import {
   Settings,
   Shield,
@@ -21,6 +23,8 @@ import {
 
 export const AdminSettings: React.FC = () => {
   const { showToast, recycleBinItems, restoreRecord, permanentDeleteRecord } = useData();
+  const { user, deleteAccount } = useAuth();
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<'policies' | 'recycleBin'>('policies');
   const [minCgpa, setMinCgpa] = useState(7.0);
@@ -29,6 +33,18 @@ export const AdminSettings: React.FC = () => {
   const [enableAiProctoring, setEnableAiProctoring] = useState(true);
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [institutionName, setInstitutionName] = useState('National Institute of Technology & Engineering');
+
+  const handleDeleteAdminAccount = async () => {
+    if (window.confirm('Are you sure you want to permanently delete your Administrator account? This action cannot be undone.')) {
+      const res = await deleteAccount();
+      if (res.success) {
+        showToast('Admin Account Deleted', 'Your administrative account has been terminated.', 'info');
+        navigate('/login');
+      } else {
+        showToast('Error', res.error || 'Failed to delete admin account.', 'danger');
+      }
+    }
+  };
 
   const totalDeleted =
     (recycleBinItems?.companies || []).length +
@@ -190,10 +206,36 @@ export const AdminSettings: React.FC = () => {
             </div>
           </div>
 
+          {/* Account Governance & Deletion */}
+          <div className="space-y-4 pb-6 border-b border-[#E2E8F0]">
+            <h3 className="text-base font-bold text-rose-600 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5" />
+              Administrative Account Governance
+            </h3>
+            <p className="text-xs text-[#64748B]">
+              Permanently terminate your administrative account credentials and security clearance.
+            </p>
+
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-rose-900">Delete Administrator Account</p>
+                <p className="text-[11px] text-rose-700">Signed in as {user?.name} ({user?.email})</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDeleteAdminAccount}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Admin Account</span>
+              </button>
+            </div>
+          </div>
+
           <div className="flex items-center justify-end">
             <button
               type="submit"
-              className="px-6 py-2.5 bg-[#4F46E5] hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-500/25 transition-all flex items-center gap-2"
+              className="px-6 py-2.5 bg-[#4F46E5] hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-500/25 transition-all flex items-center gap-2 cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>Save Institutional Policies</span>

@@ -30,6 +30,7 @@ interface AuthContextType {
     email: string;
     password: string;
   }) => Promise<{ success: boolean; error?: string; pendingApproval?: boolean; companyName?: string }>;
+  deleteAccount: (userIdOrTarget?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   getCompanyByCompanyId: (companyId: string) => Promise<Company | undefined>;
 }
@@ -994,6 +995,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // ---------------------------------------------------------------------------
+  // DELETE ACCOUNT FLOW (HR & ADMIN)
+  // ---------------------------------------------------------------------------
+  const deleteAccount = async (userIdOrTarget?: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const targetId = userIdOrTarget || user?.id;
+      if (!targetId) return { success: false, error: 'No account specified for deletion.' };
+
+      // Delete HR account if applicable
+      if (user?.role === 'HR' || (user?.role === 'ADMIN' && userIdOrTarget)) {
+        await dbService.deleteHrAccount(targetId);
+      }
+      await dbService.deleteProfile(targetId);
+
+      // If user deleted their own account, log them out immediately
+      if (!userIdOrTarget || userIdOrTarget === user?.id) {
+        await logout();
+      }
+      return { success: true };
+    } catch (err: any) {
+      console.warn('deleteAccount error:', err);
+      return { success: false, error: err.message || 'Failed to delete account.' };
+    }
+  };
+
+  // ---------------------------------------------------------------------------
   // LOGOUT FLOW
   // ---------------------------------------------------------------------------
   const logout = async (): Promise<void> => {
@@ -1019,6 +1045,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatePassword,
         registerStudent,
         registerHr,
+        deleteAccount,
         logout,
         getCompanyByCompanyId,
       }}

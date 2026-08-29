@@ -18,15 +18,20 @@ import {
   Clock,
   ChevronRight,
   Video,
+  Trash2,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 
 export const HrDashboard: React.FC = () => {
-  const { jobs, applications, interviews, students } = useData();
-  const { user } = useAuth();
+  const { jobs, applications, interviews, students, showToast } = useData();
+  const { user, deleteAccount } = useAuth();
   const navigate = useNavigate();
 
   const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const safeJobs = jobs || [];
   const safeApps = applications || [];
@@ -35,6 +40,18 @@ export const HrDashboard: React.FC = () => {
   const activeJobs = safeJobs.filter((j) => j && j.status === 'ACTIVE');
   const shortlistedApps = safeApps.filter((a) => a && a.status === 'SHORTLISTED');
   const scheduledInterviews = safeInterviews.filter((i) => i && i.status === 'SCHEDULED');
+
+  const handleConfirmDeleteAccount = async () => {
+    setIsDeleting(true);
+    const res = await deleteAccount();
+    setIsDeleting(false);
+    if (res.success) {
+      showToast('Account Deleted', 'Your HR account has been permanently removed.', 'info');
+      navigate('/login');
+    } else {
+      showToast('Error', res.error || 'Failed to delete account.', 'danger');
+    }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
@@ -65,17 +82,25 @@ export const HrDashboard: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => setIsCreateJobOpen(true)}
-              className="px-5 py-3 rounded-xl bg-white text-[#4F46E5] font-bold text-xs shadow-lg hover:bg-indigo-50 transition-all flex items-center gap-2"
+              className="px-5 py-3 rounded-xl bg-white text-[#4F46E5] font-bold text-xs shadow-lg hover:bg-indigo-50 transition-all flex items-center gap-2 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Post New Role</span>
             </button>
             <button
               onClick={() => setIsScheduleOpen(true)}
-              className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs border border-white/20 backdrop-blur-md transition-all flex items-center gap-2"
+              className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs border border-white/20 backdrop-blur-md transition-all flex items-center gap-2 cursor-pointer"
             >
               <Calendar className="w-4 h-4" />
               <span>Schedule Round</span>
+            </button>
+            <button
+              onClick={() => setIsDeleteModalOpen(true)}
+              title="Delete Recruiter Account"
+              className="px-4 py-3 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 hover:text-white font-semibold text-xs border border-rose-400/30 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete Account</span>
             </button>
           </div>
         </div>
@@ -228,6 +253,51 @@ export const HrDashboard: React.FC = () => {
       {/* Modals */}
       <CreateJobModal isOpen={isCreateJobOpen} onClose={() => setIsCreateJobOpen(false)} />
       <ScheduleInterviewModal isOpen={isScheduleOpen} onClose={() => setIsScheduleOpen(false)} />
+
+      {/* Delete Recruiter Account Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white max-w-md w-full rounded-2xl p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center border border-rose-200 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-[#0F172A]">Delete Recruiter Account</h3>
+                <p className="text-xs text-[#64748B]">Permanent action confirmation</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to permanently delete your HR recruiter account (<strong className="text-[#0F172A]">{user?.email}</strong>)? This will remove your corporate access, company linking, and credentials.
+            </p>
+
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-[11px] text-rose-800 font-medium">
+              This action cannot be undone. All active sessions will be terminated immediately.
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteAccount}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeleting ? 'Deleting...' : 'Yes, Delete Account'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

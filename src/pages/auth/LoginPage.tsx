@@ -1036,8 +1036,8 @@ export const LoginPage: React.FC = () => {
             </form>
           )}
 
-          {/* Toggle between Sign In and Registration */}
-          {activeTab !== 'ADMIN' && !isForgotPasswordMode && !isUpdatePasswordMode && (
+          {/* Toggle between Sign In and Registration for Students Only */}
+          {activeTab === 'STUDENT' && !isForgotPasswordMode && !isUpdatePasswordMode && (
             <div className="mt-5 pt-3.5 border-t border-slate-100 text-center">
               <button
                 type="button"
@@ -1046,15 +1046,11 @@ export const LoginPage: React.FC = () => {
                   setIsRegisterMode(!isRegisterMode);
                   setError(null);
                 }}
-                className={`text-xs font-semibold hover:underline cursor-pointer ${
-                  activeTab === 'HR' ? 'text-emerald-700' : 'text-[#4F46E5]'
-                }`}
+                className="text-xs font-semibold text-[#4F46E5] hover:underline cursor-pointer"
               >
                 {isRegisterMode
-                  ? 'Already have an account? Sign in'
-                  : activeTab === 'HR'
-                  ? 'Need to register an HR account with Company ID? Click here'
-                  : 'Need a new student account? Register here'}
+                  ? 'Already registered? Return to Sign In'
+                  : 'New student candidate? Register for campus placements'}
               </button>
             </div>
           )}
